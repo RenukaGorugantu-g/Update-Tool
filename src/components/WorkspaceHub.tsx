@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { usePulse } from '../context/PulseContext';
-import { Mail, MessageCircle, Send, Inbox, Star, AlertCircle, Sparkles, SendHorizontal } from 'lucide-react';
+import { Mail, MessageCircle, Inbox, Sparkles, SendHorizontal } from 'lucide-react';
 
 export const WorkspaceHub: React.FC = () => {
   const { currentUser, mockEmails, setMockEmails, mockChatMessages, sendDirectChatMessage, users } = usePulse();
@@ -58,8 +58,6 @@ export const WorkspaceHub: React.FC = () => {
     // Simulated automated team response after a short delay
     setTimeout(() => {
       // Find a manager or user in this pod/dept to reply
-      const spaceObj = chatSpaces.find(s => s.id === activeSpaceId);
-      const spaceName = spaceObj ? spaceObj.name : 'Team';
       const potentialRepliers = users.filter(u => u.id !== currentUser.id && u.active);
       const replier = potentialRepliers[Math.floor(Math.random() * potentialRepliers.length)] || currentUser;
       

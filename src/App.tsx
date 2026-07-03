@@ -29,6 +29,44 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [gmailConnectionState, setGmailConnectionState] = useState<'loading' | 'connected' | 'not-connected'>('loading');
+  const [gmailFeedback, setGmailFeedback] = useState<string | null>(null);
+  const apiBase = import.meta.env.VITE_API_BASE || '';
+
+  const persistGmailConnection = (email: string, connected: boolean) => {
+    try {
+      const stored = localStorage.getItem('pulse-gmail-connections');
+      const parsed = stored ? JSON.parse(stored) : {};
+      if (connected) {
+        parsed[email] = true;
+      } else {
+        delete parsed[email];
+      }
+      localStorage.setItem('pulse-gmail-connections', JSON.stringify(parsed));
+    } catch (error) {
+      console.warn('Unable to update Gmail connection state:', error);
+    }
+  };
+
+  const readGmailConnection = (email: string) => {
+    if (!email) {
+      return 'not-connected';
+    }
+
+    try {
+      const stored = localStorage.getItem('pulse-gmail-connections');
+      const parsed = stored ? JSON.parse(stored) : {};
+      return parsed[email] ? 'connected' : 'not-connected';
+    } catch (error) {
+      console.warn('Unable to read Gmail connection state:', error);
+      return 'not-connected';
+    }
+  };
+
+  const connectGmail = () => {
+    const baseUrl = apiBase || 'http://localhost:5000';
+    window.location.href = `${baseUrl}/auth/google?returnTo=${encodeURIComponent(window.location.origin)}`;
+  };
 
   // When changing users, make sure the active tab is permitted for the new user's role
   useEffect(() => {
@@ -45,7 +83,34 @@ function App() {
     }
   }, [currentUser, activeTab]);
 
+  useEffect(() => {
+    if (!currentUser?.email) {
+      setGmailConnectionState('not-connected');
+      return;
+    }
 
+    setGmailFeedback(null);
+    const nextState = readGmailConnection(currentUser.email);
+    setGmailConnectionState(nextState);
+
+    const params = new URLSearchParams(window.location.search);
+    const connectionStatus = params.get('gmail');
+    if (connectionStatus === 'connected') {
+      persistGmailConnection(currentUser.email, true);
+      setGmailConnectionState('connected');
+      setGmailFeedback('✓ Gmail Connected');
+      const nextUrl = `${window.location.pathname}${window.location.hash}`;
+      window.history.replaceState({}, '', nextUrl);
+      return;
+    }
+
+    if (connectionStatus === 'error') {
+      const message = params.get('gmailMessage');
+      setGmailFeedback(message ? decodeURIComponent(message) : 'Gmail connection failed. Please try again.');
+      const nextUrl = `${window.location.pathname}${window.location.hash}`;
+      window.history.replaceState({}, '', nextUrl);
+    }
+  }, [currentUser]);
 
   const getUnreadNotificationsCount = () => {
     return notifications.filter(n => !n.read).length;
@@ -250,7 +315,41 @@ function App() {
                     )}
                   </div>
 
-                  <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '8px', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{
+                      background: 'var(--bg-tertiary)',
+                      borderRadius: '8px',
+                      padding: '10px 12px',
+                      fontSize: '0.75rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                      border: '1px solid var(--glass-border)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Gmail</span>
+                        {gmailConnectionState === 'connected' ? (
+                          <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>✓ Connected</span>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setShowUserDropdown(false);
+                              connectGmail();
+                            }}
+                            className="btn btn-secondary"
+                            style={{ padding: '4px 8px', fontSize: '0.7rem', borderRadius: '999px' }}
+                          >
+                            Connect Gmail
+                          </button>
+                        )}
+                      </div>
+                      {gmailFeedback && (
+                        <span style={{ color: gmailConnectionState === 'connected' ? 'var(--accent-emerald)' : 'var(--accent-amber)', fontSize: '0.68rem' }}>
+                          {gmailFeedback}
+                        </span>
+                      )}
+                    </div>
+
                     <button
                       onClick={() => {
                         setShowUserDropdown(false);

@@ -324,6 +324,85 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     ]);
   };
 
+  const apiBase = import.meta.env.VITE_API_BASE || '';
+
+  // Load persisted updates from backend if available
+  useEffect(() => {
+    if (!apiBase) return;
+    (async () => {
+      try {
+        const resp = await fetch(`${apiBase}/api/updates`);
+        const json = await resp.json().catch(() => null);
+        if (json?.success && Array.isArray(json.updates)) {
+          setUpdates(json.updates as UpdateRecord[]);
+          localStorage.setItem('pulse-updates', JSON.stringify(json.updates));
+        }
+      } catch (error) {
+        // ignore and continue with local state
+      }
+    })();
+  }, [apiBase]);
+
+  const sendLiveGmail = async (recipientEmail: string, subject: string, body: string) => {
+    if (!apiBase || !currentUser?.email) {
+      return;
+    }
+
+    const payload = {
+      endpoint: `${apiBase}/api/send-gmail`,
+      request: { senderEmail: currentUser.email, to: recipientEmail, subject, message: body }
+    };
+
+    try {
+      const response = await fetch(`${apiBase}/api/send-gmail`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ senderEmail: currentUser.email, to: recipientEmail, subject, message: body })
+      });
+      const result = await response.json().catch(() => null);
+      logIntegration('gmail', recipientEmail, subject, body, { ...payload, result, status: response.status });
+      return result;
+    } catch (error) {
+      logIntegration('gmail', recipientEmail, subject, body, { ...payload, error: String(error) });
+      return null;
+    }
+  };
+
+  const sendLiveChat = async (spaceId: string, text: string) => {
+    if (!apiBase) {
+      return;
+    }
+
+    const payload = {
+      endpoint: `${apiBase}/api/send-chat`,
+      request: { spaceId, text }
+    };
+
+    try {
+      const response = await fetch(`${apiBase}/api/send-chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spaceId, text })
+      });
+      const result = await response.json().catch(() => null);
+      logIntegration('chat', spaceId, undefined, text, { ...payload, result, status: response.status });
+      return result;
+    } catch (error) {
+      logIntegration('chat', spaceId, undefined, text, { ...payload, error: String(error) });
+      return null;
+    }
+  };
+
+  const getChatSpaceId = (department: string) => {
+    const dept = department.toLowerCase();
+    if (dept.includes('development') || dept.includes('developer')) return 'space_development';
+    if (dept.includes('design')) return 'space_design';
+    if (dept.includes('marketing')) return 'space_marketing';
+    if (dept.includes('sales')) return 'space_sales';
+    if (dept.includes('success') || dept.includes('client')) return 'space_client_success';
+    return 'space_general';
+  };
+
   // Submit daily updates
   const submitEmployeeUpdate = (newUpdate: Omit<UpdateRecord, 'id' | 'employeeId' | 'employeeName' | 'department' | 'pod' | 'date' | 'timestamp' | 'comments'>) => {
     if (!currentUser) return;
@@ -361,6 +440,20 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     });
 
+    // Persist to backend (best-effort)
+    (async () => {
+      try {
+        if (!apiBase) return;
+        await fetch(`${apiBase}/api/updates`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record)
+        });
+      } catch (err) {
+        // ignore persistence failure — app remains functional
+      }
+    })();
+
     // Send toast notifications
     const hasBlockers = record.blockers.length > 0 && 
                          record.blockers[0].toLowerCase() !== 'none' && 
@@ -378,6 +471,38 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         },
         ...prev
       ]);
+
+      const blockerSubject = `Blocker Alert Logged: ${record.projectName}`;
+      const blockerBody = `Hi ${currentUser.name},\n\nYour blocker has been logged for the project ${record.projectName}:\n"${record.blockers[0]}"\n\nYour manager will be notified and the team space has been updated in Google Chat.\n\nBest,\nMaple Pulse`;
+
+      void sendLiveGmail(currentUser.email, blockerSubject, blockerBody);
+
+      const newEmailRecord: MockEmail = {
+        id: `email-${Date.now()}`,
+        senderName: 'Maple Pulse Notifications',
+        senderEmail: 'notifications@maplelearningsolutions.com',
+        recipientEmail: currentUser.email,
+        subject: blockerSubject,
+        body: blockerBody,
+        timestamp: new Date().toISOString(),
+        read: false
+      };
+      setMockEmails(prev => [newEmailRecord, ...prev]);
+
+      const chatSpaceId = getChatSpaceId(currentUser.department);
+      const chatBody = `💬 Blocker logged by ${currentUser.name} for ${record.projectName}: "${record.blockers[0]}"`;
+      void sendLiveChat(chatSpaceId, chatBody);
+
+      const newChatRecord: MockChatMessage = {
+        id: `chat-${Date.now()}`,
+        spaceId: chatSpaceId,
+        senderName: 'Maple Pulse Bot',
+        senderId: 'system-bot',
+        avatarColor: '#8b5cf6',
+        text: chatBody,
+        timestamp: new Date().toISOString()
+      };
+      setMockChatMessages(prev => [...prev, newChatRecord]);
     } else {
       setNotifications(prev => [
         {
@@ -409,36 +534,36 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       sentVia
     };
 
+    const updated = {
+      ...targetUpdate,
+      comments: [...targetUpdate.comments, newComment]
+    };
+
     setUpdates(prev => {
       const copy = [...prev];
-      copy[updateIndex] = {
-        ...targetUpdate,
-        comments: [...targetUpdate.comments, newComment]
-      };
+      copy[updateIndex] = updated;
       return copy;
     });
+
+    // Persist updated update with new comment (best-effort)
+    (async () => {
+      try {
+        if (!apiBase) return;
+        await fetch(`${apiBase}/api/updates`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updated)
+        });
+      } catch (err) {
+        // ignore
+      }
+    })();
 
     // Gmail mock request
     if (sentVia.gmail && employee) {
       const emailSubject = `Manager Feedback Comment - Maple Pulse`;
       const emailBody = `Hi ${employee.name},\n\nExecutive Board Member ${currentUser.name} left a feedback comment on your task update:\n"${content}"\n\nPlease address this comment.\n\nBest,\nMaple Pulse Internal Platform`;
-      
-      const gmailPayload = {
-        url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
-        method: 'POST',
-        headers: {
-          Authorization: 'Bearer MOCK_OAUTH_TOKEN_GMAIL_API',
-          'xi-api-key': 'sk_942d3956339d41d5490c65e6c528354a8f4c1a2f8ae7ffca'
-        },
-        body: {
-          raw: btoa(
-            `To: ${employee.email}\r\n` +
-            `Subject: ${emailSubject}\r\n\r\n` +
-            emailBody
-          )
-        }
-      };
-      logIntegration('gmail', employee.email, emailSubject, emailBody, gmailPayload);
+      void sendLiveGmail(employee.email, emailSubject, emailBody);
 
       // Add to Gmail simulator inbox
       const newEmailRecord: MockEmail = {
@@ -456,37 +581,13 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Google Chat mock request
     if (sentVia.chat && employee) {
-      const chatSpace = `spaces/team_${employee.department.toLowerCase().replace(/\s+/g, '_')}`;
+      const chatSpaceId = getChatSpaceId(employee.department);
       const chatBody = `💬 *Manager Comment by ${currentUser.name}*:\nFor employee: *${employee.name}*\nProject: *${targetUpdate.projectName}*\nComment: "${content}"`;
-      
-      const chatPayload = {
-        url: `https://chat.googleapis.com/v1/${chatSpace}/messages`,
-        method: 'POST',
-        headers: {
-          Authorization: 'Bearer MOCK_OAUTH_TOKEN_CHAT_API'
-        },
-        body: { text: chatBody }
-      };
-      logIntegration('chat', `${employee.pod} > ${employee.department} Chat Space`, undefined, chatBody, chatPayload);
-
-      // Determine Chat Space based on employee department
-      let spaceId = 'space_general';
-      const dept = employee.department.toLowerCase();
-      if (dept.includes('development') || dept.includes('developer')) {
-        spaceId = 'space_development';
-      } else if (dept.includes('design')) {
-        spaceId = 'space_design';
-      } else if (dept.includes('marketing')) {
-        spaceId = 'space_marketing';
-      } else if (dept.includes('sales')) {
-        spaceId = 'space_sales';
-      } else if (dept.includes('success') || dept.includes('client')) {
-        spaceId = 'space_client_success';
-      }
+      void sendLiveChat(chatSpaceId, chatBody);
 
       const newChatRecord: MockChatMessage = {
         id: `chat-${Date.now()}`,
-        spaceId,
+        spaceId: chatSpaceId,
         senderName: currentUser.name,
         senderId: currentUser.id,
         avatarColor: currentUser.avatarColor,
