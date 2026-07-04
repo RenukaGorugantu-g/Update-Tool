@@ -7,7 +7,6 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "start": "cd server && npm start",
-    "postinstall": "cd server && npm install",
     "lint": "oxlint",
     "preview": "vite preview",
     "server:dev": "cd server && npm run dev"
