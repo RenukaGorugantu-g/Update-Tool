@@ -4,7 +4,6 @@ import dotenv from 'dotenv';
 import { google } from 'googleapis';
 import { createTokenStore } from './tokenStore.js';
 import { createUpdatesStore } from './updatesStore.js';
-import { createUsersStore } from './usersStore.js';
 
 dotenv.config();
 
@@ -21,7 +20,78 @@ const redirectUri = process.env.GOOGLE_REDIRECT_URI && process.env.GOOGLE_REDIRE
   : process.env.GOOGLE_REDIRECT_URI_CALLBACK || 'http://localhost:5000/auth/google/callback';
 const tokenStore = createTokenStore();
 const updatesStore = createUpdatesStore();
-const usersStore = createUsersStore();
+
+// In-memory users store (for Vercel compatibility - file system is ephemeral)
+// Initialize with default users
+const initialUsers = [
+  {
+    "id": "u-admin",
+    "name": "Admin Root",
+    "email": "info@maplelearningsolutions.com",
+    "role": "admin",
+    "department": "Management",
+    "pod": "India Pod",
+    "reportingManager": "Board",
+    "employeeId": "MP-0000",
+    "active": true,
+    "avatarColor": "#dc2626",
+    "password": "admin"
+  },
+  {
+    "id": "u-sandeep",
+    "name": "Sandeep M",
+    "email": "sandeep@maplelearningsolutions.com",
+    "role": "executive",
+    "department": "Executive Board",
+    "pod": "India Pod",
+    "reportingManager": "CEO",
+    "employeeId": "MP-0001",
+    "active": true,
+    "avatarColor": "#ec4899",
+    "password": "executive"
+  },
+  {
+    "id": "u-krishna",
+    "name": "Krishna",
+    "email": "krishna@maplelearningsolutions.com",
+    "role": "executive",
+    "department": "Executive Board",
+    "pod": "India Pod",
+    "reportingManager": "CEO",
+    "employeeId": "MP-0002",
+    "active": true,
+    "avatarColor": "#6366f1",
+    "password": "executive"
+  },
+  {
+    "id": "u-rathish",
+    "name": "Rathish",
+    "email": "rathish@maplelearningsolutions.com",
+    "role": "executive",
+    "department": "Executive Board",
+    "pod": "UAE Pod",
+    "reportingManager": "CEO",
+    "employeeId": "MP-0003",
+    "active": true,
+    "avatarColor": "#f59e0b",
+    "password": "executive"
+  }
+];
+
+let usersStoreData = [...initialUsers];
+const usersStore = {
+  async getAll() {
+    return usersStoreData;
+  },
+  async save(users) {
+    if (!Array.isArray(users)) {
+      throw new Error('Users must be an array.');
+    }
+    usersStoreData = users;
+    return users;
+  }
+};
+
 const oauthScopes = [
   'https://www.googleapis.com/auth/gmail.send',
   'openid',
