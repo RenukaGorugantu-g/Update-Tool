@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { usePulse } from '../context/PulseContext';
+import { ExecutiveAIChat } from './ExecutiveAIChat';
 import { 
   Mic, 
   MicOff, 
@@ -23,6 +24,8 @@ export const EmployeeDashboard: React.FC = () => {
     playElevenLabsTTS,
     isVoiceLoading
   } = usePulse();
+
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // Form Fields
   const [completed, setCompleted] = useState('');
@@ -681,6 +684,27 @@ export const EmployeeDashboard: React.FC = () => {
 
       </form>
       
+      <button
+        type="button"
+        onClick={() => setIsChatOpen(true)}
+        className="btn btn-primary"
+        style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          zIndex: 100,
+          boxShadow: '0 8px 24px rgba(221,36,118,0.25)',
+          borderRadius: '30px',
+          padding: '12px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          border: 'none'
+        }}
+      >
+        <span>Ask AI Assistant</span>
+      </button>
+      <ExecutiveAIChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
