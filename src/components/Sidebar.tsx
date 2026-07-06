@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { usePulse } from '../context/PulseContext';
 import { 
   LayoutDashboard, 
@@ -9,7 +9,6 @@ import {
   Moon, 
   Shield, 
   Activity,
-  ShieldAlert,
   MessageSquare
 } from 'lucide-react';
 
@@ -19,8 +18,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
-  const { theme, setTheme, currentUser, users, setCurrentUser } = usePulse();
-  const [showDemoConsole, setShowDemoConsole] = useState(false);
+  const { theme, setTheme, currentUser } = usePulse();
 
   if (!currentUser) return null;
 
@@ -168,90 +166,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
               {currentUser.role === 'admin' ? 'CEO & Admin' : currentUser.role}
             </p>
           </div>
-        </div>
-
-        {/* Collapsible Demo Switch Console */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <button
-            onClick={() => setShowDemoConsole(!showDemoConsole)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              width: '100%',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              border: '1px dashed var(--glass-border)',
-              background: 'transparent',
-              color: 'var(--text-secondary)',
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all var(--transition-fast)',
-              outline: 'none'
-            }}
-          >
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <ShieldAlert size={12} style={{ color: 'var(--accent-primary)' }} />
-              <span>🛠️ Demo Switch Console</span>
-            </span>
-            <span style={{ fontSize: '0.65rem' }}>{showDemoConsole ? '▲' : '▼'}</span>
-          </button>
-
-          {showDemoConsole && (
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px',
-              background: 'var(--bg-tertiary)',
-              padding: '8px',
-              borderRadius: '8px',
-              border: '1px solid var(--glass-border)',
-              maxHeight: '140px',
-              overflowY: 'auto'
-            }}>
-              {users.map(u => (
-                <button
-                  key={u.id}
-                  onClick={() => setCurrentUser(u)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    width: '100%',
-                    padding: '6px 8px',
-                    borderRadius: '4px',
-                    border: 'none',
-                    background: currentUser.id === u.id ? 'var(--accent-light)' : 'transparent',
-                    color: currentUser.id === u.id ? 'var(--accent-primary)' : 'var(--text-primary)',
-                    fontSize: '0.75rem',
-                    fontWeight: currentUser.id === u.id ? 700 : 500,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'all var(--transition-fast)'
-                  }}
-                >
-                  <div style={{
-                    width: '18px',
-                    height: '18px',
-                    borderRadius: '50%',
-                    backgroundColor: u.avatarColor,
-                    color: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.6rem',
-                    fontWeight: 700
-                  }}>
-                    {u.name.split(' ').map(n => n[0]).join('')}
-                  </div>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {u.name} ({u.role})
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Theme Settings Button Row */}

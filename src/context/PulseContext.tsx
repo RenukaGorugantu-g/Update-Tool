@@ -198,7 +198,13 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [updates, setUpdates] = useState<UpdateRecord[]>(() => {
     const saved = localStorage.getItem('pulse-updates');
-    return saved ? JSON.parse(saved) : [];
+    const parsed = saved ? JSON.parse(saved) : [];
+    return Array.isArray(parsed)
+      ? parsed.map((update: any) => ({
+          ...update,
+          comments: Array.isArray(update.comments) ? update.comments : []
+        }))
+      : [];
   });
 
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -536,7 +542,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const updated = {
       ...targetUpdate,
-      comments: [...targetUpdate.comments, newComment]
+      comments: [...(Array.isArray(targetUpdate.comments) ? targetUpdate.comments : []), newComment]
     };
 
     setUpdates(prev => {
@@ -549,13 +555,17 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     (async () => {
       try {
         if (!apiBase) return;
-        await fetch(`${apiBase}/api/updates`, {
+        const response = await fetch(`${apiBase}/api/updates`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updated)
         });
+        if (!response.ok) {
+          const json = await response.json().catch(() => null);
+          console.warn('Failed to save comment update to backend:', json || response.statusText);
+        }
       } catch (err) {
-        // ignore
+        console.warn('Unable to persist comment update to backend:', err);
       }
     })();
 

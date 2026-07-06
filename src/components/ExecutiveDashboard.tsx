@@ -160,7 +160,7 @@ export const ExecutiveDashboard: React.FC = () => {
         style={{
           position: 'fixed',
           bottom: '24px',
-          left: '24px',
+          right: '24px',
           zIndex: 100,
           boxShadow: '0 8px 24px rgba(221,36,118,0.25)',
           borderRadius: '30px',

@@ -36,7 +36,12 @@ export const createUpdatesStore = (filePath = defaultPath) => ({
     const items = await readStore(filePath);
     const idx = items.findIndex(u => u.id === update.id);
     const now = new Date().toISOString();
-    const toSave = { ...update, updatedAt: now, createdAt: update.createdAt || now };
+    const toSave = {
+      ...update,
+      comments: Array.isArray(update.comments) ? update.comments : [],
+      updatedAt: now,
+      createdAt: update.createdAt || now
+    };
 
     if (idx === -1) {
       items.push(toSave);
