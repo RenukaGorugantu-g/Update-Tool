@@ -3,7 +3,7 @@ import { usePulse } from '../context/PulseContext';
 import { Sparkles, LogIn, Lock, User, CheckCircle2, Eye, EyeOff, RotateCcw } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const { login, users, setUsers } = usePulse();
+  const { login, users, resetPassword } = usePulse();
   const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -50,11 +50,12 @@ export const Login: React.FC = () => {
     }
 
     const targetUser = users.find(
-      user => user.email.toLowerCase() === resetIdentifier.trim().toLowerCase() || user.employeeId.toLowerCase() === resetIdentifier.trim().toLowerCase()
+      user => user.active &&
+        (user.email.toLowerCase() === resetIdentifier.trim().toLowerCase() || user.employeeId.toLowerCase() === resetIdentifier.trim().toLowerCase())
     );
 
     if (!targetUser) {
-      setResetMsg('No matching account found. Please check your email or employee ID.');
+      setResetMsg('No active matching account found. Please check your email or employee ID.');
       return;
     }
 
@@ -62,8 +63,14 @@ export const Login: React.FC = () => {
     setResetMsg('');
 
     setTimeout(() => {
-      setUsers(prev => prev.map(user => user.id === targetUser.id ? { ...user, password: newPassword } : user));
+      const updated = resetPassword(resetIdentifier, newPassword);
       setResetting(false);
+
+      if (!updated) {
+        setResetMsg('Password could not be updated. Please check the account and try again.');
+        return;
+      }
+
       setResetMsg('Password updated successfully. You can now sign in with your new password.');
       setResetIdentifier('');
       setNewPassword('');

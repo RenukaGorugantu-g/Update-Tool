@@ -111,6 +111,7 @@ interface PulseContextType {
   addCommentToUpdate: (updateId: string, content: string, sentVia: { gmail: boolean; chat: boolean; internal: boolean }) => void;
   createNewUser: (user: Omit<User, 'id' | 'active' | 'avatarColor'>) => void;
   toggleUserActiveStatus: (userId: string) => void;
+  resetPassword: (loginInput: string, newPassword: string) => boolean;
   parseVoiceUpdateAI: (voiceText: string) => Promise<{ completed: string[]; working: string[]; blockers: string[] }>;
   askExecutiveAI: (query: string) => Promise<string>;
   playElevenLabsTTS: (text: string) => Promise<void>;
@@ -336,6 +337,26 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+
+  const persistUsers = async (nextUsers: User[]) => {
+    localStorage.setItem('pulse-users', JSON.stringify(nextUsers));
+    if (!apiBase) return;
+
+    try {
+      const response = await fetch(`${apiBase}/api/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nextUsers)
+      });
+
+      if (!response.ok) {
+        const json = await response.json().catch(() => null);
+        console.warn('Failed to persist users to backend:', json || response.statusText);
+      }
+    } catch (err) {
+      console.warn('Failed to persist users to backend:', err);
+    }
+  };
 
   // Load persisted users from backend if available (for cross-device sync)
   useEffect(() => {
@@ -640,24 +661,12 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       id: `emp-${Date.now()}`,
       active: true,
       avatarColor: randomColor,
-      password: 'password'
+      password: userData.password
     };
 
     setUsers(prev => {
       const updated = [...prev, newUser];
-      // Persist to backend (best-effort)
-      (async () => {
-        try {
-          if (!apiBase) return;
-          await fetch(`${apiBase}/api/users`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updated)
-          });
-        } catch (err) {
-          console.warn('Failed to persist new user to backend:', err);
-        }
-      })();
+      void persistUsers(updated);
       return updated;
     });
   };
@@ -665,42 +674,48 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const toggleUserActiveStatus = (userId: string) => {
     setUsers(prev => {
       const updated = prev.map(u => (u.id === userId ? { ...u, active: !u.active } : u));
-      // Persist to backend (best-effort)
-      (async () => {
-        try {
-          if (!apiBase) return;
-          await fetch(`${apiBase}/api/users`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updated)
-          });
-        } catch (err) {
-          console.warn('Failed to persist user status change to backend:', err);
-        }
-      })();
+      void persistUsers(updated);
       return updated;
     });
   };
 
   // Auth Operations
   const login = (loginInput: string, passwordInput: string): boolean => {
-    const user = users.find(
-      u => u.email.toLowerCase() === loginInput.trim().toLowerCase() ||
-           u.employeeId.toLowerCase() === loginInput.trim().toLowerCase()
+    const normalizedLogin = loginInput.trim().toLowerCase();
+    const passwordValue = passwordInput.trim();
+    if (!normalizedLogin || !passwordValue) return false;
+
+    const matchingUsers = users.filter(
+      u => u.email.toLowerCase() === normalizedLogin ||
+           u.employeeId.toLowerCase() === normalizedLogin
     );
 
+    const user = matchingUsers.find(u => u.active && u.password === passwordValue);
     if (!user) return false;
-    if (!user.active) return false;
-    if (!passwordInput.trim()) return false;
 
-    const expectedPassword = user.password;
-    if (!expectedPassword) return false;
-    if (expectedPassword === passwordInput) {
-      setCurrentUser(user);
-      return true;
-    }
+    setCurrentUser(user);
+    return true;
+  };
 
-    return false;
+  const resetPassword = (loginInput: string, newPassword: string): boolean => {
+    const normalizedLogin = loginInput.trim().toLowerCase();
+    const passwordValue = newPassword.trim();
+    if (!normalizedLogin || !passwordValue) return false;
+
+    const targetUser = users.find(
+      u => u.active &&
+           (u.email.toLowerCase() === normalizedLogin || u.employeeId.toLowerCase() === normalizedLogin)
+    );
+
+    if (!targetUser) return false;
+
+    setUsers(prev => {
+      const updated = prev.map(user => user.id === targetUser.id ? { ...user, password: passwordValue } : user);
+      void persistUsers(updated);
+      return updated;
+    });
+
+    return true;
   };
 
   const logout = () => {
@@ -911,6 +926,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addCommentToUpdate,
         createNewUser,
         toggleUserActiveStatus,
+        resetPassword,
         parseVoiceUpdateAI,
         askExecutiveAI,
         playElevenLabsTTS,

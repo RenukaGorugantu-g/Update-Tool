@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { google } from 'googleapis';
 import { createTokenStore } from './tokenStore.js';
 import { createUpdatesStore } from './updatesStore.js';
+import { createUsersStore } from './usersStore.js';
 
 dotenv.config();
 
@@ -20,9 +21,9 @@ const redirectUri = process.env.GOOGLE_REDIRECT_URI && process.env.GOOGLE_REDIRE
   : process.env.GOOGLE_REDIRECT_URI_CALLBACK || 'http://localhost:5000/auth/google/callback';
 const tokenStore = createTokenStore();
 const updatesStore = createUpdatesStore();
+const fileUsersStore = createUsersStore();
 
-// In-memory users store (for Vercel compatibility - file system is ephemeral)
-// Initialize with default users
+// File-backed users store. Seeds default users when users.json is empty.
 const initialUsers = [
   {
     "id": "u-admin",
@@ -78,16 +79,21 @@ const initialUsers = [
   }
 ];
 
-let usersStoreData = [...initialUsers];
 const usersStore = {
   async getAll() {
-    return usersStoreData;
+    const users = await fileUsersStore.getAll();
+    if (users.length > 0) {
+      return users;
+    }
+
+    await fileUsersStore.save(initialUsers);
+    return initialUsers;
   },
   async save(users) {
     if (!Array.isArray(users)) {
       throw new Error('Users must be an array.');
     }
-    usersStoreData = users;
+    await fileUsersStore.save(users);
     return users;
   }
 };
