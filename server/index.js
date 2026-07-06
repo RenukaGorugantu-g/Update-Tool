@@ -284,10 +284,8 @@ app.delete('/api/updates/:id', async (req, res) => {
   }
 });
 
-// Cleanup old updates on startup (keeps at least 7 days)
-updatesStore.cleanupOlderThan(7).then(removed => {
-  if (removed > 0) console.log(`Cleaned up ${removed} updates older than 7 days.`);
-}).catch(err => console.warn('cleanup failed', err));
+// Do not automatically delete saved updates on startup. Updates remain until the admin removes them.
+// If cleanup is required, it can be triggered explicitly by an admin-specific endpoint later.
 
 app.post('/api/send-gmail', async (req, res) => {
   const senderEmail = req.body.senderEmail || req.body.fromEmail || req.body.sender || req.body.gmailSenderEmail;

@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
 import { usePulse } from '../context/PulseContext';
-import { Shield, Sparkles, LogIn, Lock, User, CheckCircle2 } from 'lucide-react';
+import { Sparkles, LogIn, Lock, User, CheckCircle2, Eye, EyeOff, RotateCcw } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const { login, users } = usePulse();
+  const { login, users, setUsers } = usePulse();
   const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Separate users by role for demo convenience
-  const admins = users.filter(u => u.role === 'admin');
-  const executives = users.filter(u => u.role === 'executive');
-  const employees = users.filter(u => u.role === 'employee');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showResetPanel, setShowResetPanel] = useState(false);
+  const [resetIdentifier, setResetIdentifier] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showConfirmResetPassword, setShowConfirmResetPassword] = useState(false);
+  const [resetMsg, setResetMsg] = useState('');
+  const [resetting, setResetting] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +28,6 @@ export const Login: React.FC = () => {
     setErrorMsg('');
     setLoading(true);
 
-    // Simulate network delay for premium feel
     setTimeout(() => {
       const success = login(loginInput, password);
       setLoading(false);
@@ -34,19 +37,40 @@ export const Login: React.FC = () => {
     }, 800);
   };
 
-  const handleQuickLogin = (emailOrId: string, pass: string) => {
-    setLoginInput(emailOrId);
-    setPassword(pass);
-    setErrorMsg('');
-    setLoading(true);
+  const handleResetPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetIdentifier.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+      setResetMsg('Please enter your email/ID and choose a new password.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setResetMsg('The new passwords do not match.');
+      return;
+    }
+
+    const targetUser = users.find(
+      user => user.email.toLowerCase() === resetIdentifier.trim().toLowerCase() || user.employeeId.toLowerCase() === resetIdentifier.trim().toLowerCase()
+    );
+
+    if (!targetUser) {
+      setResetMsg('No matching account found. Please check your email or employee ID.');
+      return;
+    }
+
+    setResetting(true);
+    setResetMsg('');
 
     setTimeout(() => {
-      const success = login(emailOrId, pass);
-      setLoading(false);
-      if (!success) {
-        setErrorMsg('Deactivated account or wrong password.');
-      }
-    }, 400);
+      setUsers(prev => prev.map(user => user.id === targetUser.id ? { ...user, password: newPassword } : user));
+      setResetting(false);
+      setResetMsg('Password updated successfully. You can now sign in with your new password.');
+      setResetIdentifier('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowResetPanel(false);
+      setLoginInput(targetUser.email);
+    }, 600);
   };
 
   return (
@@ -61,7 +85,6 @@ export const Login: React.FC = () => {
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* Decorative ambient background glows */}
       <div style={{
         position: 'absolute',
         width: '500px',
@@ -92,7 +115,6 @@ export const Login: React.FC = () => {
         zIndex: 2,
         alignItems: 'center'
       }}>
-        {/* Left Side: Brand presentation */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
@@ -157,7 +179,6 @@ export const Login: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Side: Login Form Card */}
         <div className="glass-card" style={{
           padding: '36px',
           border: '1px solid var(--glass-border)',
@@ -173,7 +194,7 @@ export const Login: React.FC = () => {
               Welcome Back
             </h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Sign in using your corporate email or Employee ID
+              Sign in with your work email or employee ID.
             </p>
           </div>
 
@@ -214,13 +235,21 @@ export const Login: React.FC = () => {
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '13px', color: 'var(--text-muted)' }} />
                 <input
                   id="password-input"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  style={{ paddingLeft: '38px' }}
+                  style={{ paddingLeft: '38px', paddingRight: '42px' }}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(prev => !prev)}
+                  style={{ position: 'absolute', right: '10px', top: '10px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 
@@ -254,88 +283,101 @@ export const Login: React.FC = () => {
             </button>
           </form>
 
-          {/* Quick Demo Access Console */}
-          <div style={{
-            borderTop: '1px solid var(--glass-border)',
-            paddingTop: '20px',
-            marginTop: '8px'
-          }}>
-            <span style={{
-              fontSize: '0.7rem',
-              fontWeight: 800,
-              color: 'var(--accent-primary)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              marginBottom: '12px'
-            }}>
-              <Shield size={12} />
-              <span>Developer Quick Demo Console</span>
-            </span>
+          <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '20px', marginTop: '8px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setShowResetPanel(prev => !prev);
+                setResetIdentifier(loginInput);
+                setResetMsg('');
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--accent-primary)',
+                fontWeight: 700,
+                cursor: 'pointer',
+                padding: 0,
+                fontSize: '0.8rem'
+              }}
+            >
+              <RotateCcw size={14} />
+              <span>Reset password</span>
+            </button>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              
-              {/* Admin Card */}
-              <div>
-                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px' }}>CEO Admin</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {admins.map(user => (
-                    <button
-                      key={user.id}
-                      onClick={() => handleQuickLogin(user.email, user.password || 'admin')}
-                      className="chip"
-                      style={{ fontSize: '0.7rem', padding: '4px 8px' }}
-                    >
-                      {user.name} ({user.employeeId})
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Executives Card */}
-              <div>
-                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px' }}>Executive Boards</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {executives.map(user => (
-                    <button
-                      key={user.id}
-                      onClick={() => handleQuickLogin(user.email, user.password || 'executive')}
-                      className="chip"
-                      style={{ fontSize: '0.7rem', padding: '4px 8px' }}
-                    >
-                      {user.name.split(' ')[0]} ({user.employeeId})
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Employees Card */}
-              {employees.length > 0 && (
+            {showResetPanel && (
+              <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
                 <div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px' }}>Employees</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '72px', overflowY: 'auto' }}>
-                    {employees.map(user => (
-                      <button
-                        key={user.id}
-                        onClick={() => handleQuickLogin(user.employeeId, user.password || 'password')}
-                        className="chip"
-                        style={{ fontSize: '0.7rem', padding: '4px 8px', borderStyle: 'dashed' }}
-                      >
-                        {user.name.split(' ')[0]} ({user.employeeId})
-                      </button>
-                    ))}
+                  <label htmlFor="reset-identifier" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Email Address / Employee ID</label>
+                  <input
+                    id="reset-identifier"
+                    type="text"
+                    value={resetIdentifier}
+                    onChange={(e) => setResetIdentifier(e.target.value)}
+                    placeholder="Enter work email or employee ID"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="new-password" style={{ fontSize: '0.75rem', fontWeight: 700 }}>New Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <Lock size={16} style={{ position: 'absolute', left: '12px', top: '13px', color: 'var(--text-muted)' }} />
+                    <input
+                      id="new-password"
+                      type={showResetPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Choose a new password"
+                      style={{ paddingLeft: '38px', paddingRight: '42px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowResetPassword(prev => !prev)}
+                      style={{ position: 'absolute', right: '10px', top: '10px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                      aria-label={showResetPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showResetPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
                 </div>
-              )}
-
-            </div>
+                <div>
+                  <label htmlFor="confirm-password" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Confirm Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <Lock size={16} style={{ position: 'absolute', left: '12px', top: '13px', color: 'var(--text-muted)' }} />
+                    <input
+                      id="confirm-password"
+                      type={showConfirmResetPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm your new password"
+                      style={{ paddingLeft: '38px', paddingRight: '42px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmResetPassword(prev => !prev)}
+                      style={{ position: 'absolute', right: '10px', top: '10px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                      aria-label={showConfirmResetPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmResetPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+                {resetMsg && (
+                  <div style={{ fontSize: '0.75rem', color: resetMsg.includes('successfully') ? 'var(--accent-emerald)' : 'var(--accent-amber)' }}>
+                    {resetMsg}
+                  </div>
+                )}
+                <button type="submit" className="btn btn-secondary" disabled={resetting} style={{ justifyContent: 'center' }}>
+                  {resetting ? 'Updating...' : 'Save New Password'}
+                </button>
+              </form>
+            )}
           </div>
-
         </div>
       </div>
-      
+
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }

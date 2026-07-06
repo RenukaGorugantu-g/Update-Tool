@@ -118,16 +118,16 @@ export const OrgChart: React.FC = () => {
               {/* Department branches */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 
-                {/* Design Team */}
+                {/* Web Team */}
                 <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', padding: '14px', border: '1px solid var(--glass-border)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent-indigo)', textTransform: 'uppercase' }}>
-                      Design Team
+                      Web Team
                     </span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Lead: Marcus Thompson</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Lead: Sandeep</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {getEmployeesInDept('India Pod', 'Design').map(emp => (
+                    {getEmployeesInDept('India Pod', 'Web').map(emp => (
                       <div key={emp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--glass-border)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
                           <User size={12} style={{ color: 'var(--text-muted)' }} />
@@ -139,16 +139,16 @@ export const OrgChart: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Development Team */}
+                {/* eLearning Team */}
                 <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', padding: '14px', border: '1px solid var(--glass-border)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent-indigo)', textTransform: 'uppercase' }}>
-                      Development Team
+                      eLearning Team
                     </span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Lead: Marcus Thompson</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Lead: Krishna</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {getEmployeesInDept('India Pod', 'Development').map(emp => (
+                    {getEmployeesInDept('India Pod', 'Learning').map(emp => (
                       <div key={emp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--glass-border)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
                           <User size={12} style={{ color: 'var(--text-muted)' }} />
@@ -160,13 +160,13 @@ export const OrgChart: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Marketing Team */}
+                {/* Marketing & Sales Team */}
                 <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', padding: '14px', border: '1px solid var(--glass-border)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent-indigo)', textTransform: 'uppercase' }}>
-                      Marketing Team
+                      Marketing & Sales Team
                     </span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Lead: Sarah Chen</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Lead: Rathish</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {getEmployeesInDept('India Pod', 'Marketing').map(emp => (

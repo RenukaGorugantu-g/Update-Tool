@@ -127,9 +127,9 @@ interface PulseContextType {
 // --- Seed Data (Admin + Executives only, No Fake Data for Employees/Updates) ---
 const initialUsers: User[] = [
   { id: 'u-admin', name: 'Admin Root', email: 'info@maplelearningsolutions.com', role: 'admin', department: 'Management', pod: 'India Pod', reportingManager: 'Board', employeeId: 'MP-0000', active: true, avatarColor: '#dc2626', password: 'admin' },
-  { id: 'u-sandeep', name: 'Sandeep M', email: 'sandeep@maplelearningsolutions.com', role: 'executive', department: 'Executive Board', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0001', active: true, avatarColor: '#ec4899', password: 'executive' },
-  { id: 'u-krishna', name: 'Krishna', email: 'krishna@maplelearningsolutions.com', role: 'executive', department: 'Executive Board', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0002', active: true, avatarColor: '#6366f1', password: 'executive' },
-  { id: 'u-rathish', name: 'Rathish', email: 'rathish@maplelearningsolutions.com', role: 'executive', department: 'Executive Board', pod: 'UAE Pod', reportingManager: 'CEO', employeeId: 'MP-0003', active: true, avatarColor: '#f59e0b', password: 'executive' }
+  { id: 'u-sandeep', name: 'Sandeep', email: 'sandeep@maplelearningsolutions.com', role: 'executive', department: 'Web Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0001', active: true, avatarColor: '#ec4899', password: 'executive' },
+  { id: 'u-krishna', name: 'Krishna', email: 'krishna@maplelearningsolutions.com', role: 'executive', department: 'eLearning Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0002', active: true, avatarColor: '#6366f1', password: 'executive' },
+  { id: 'u-rathish', name: 'Rathish', email: 'rathish@maplelearningsolutions.com', role: 'executive', department: 'Marketing & Sales Team', pod: 'UAE Pod', reportingManager: 'CEO', employeeId: 'MP-0003', active: true, avatarColor: '#f59e0b', password: 'executive' }
 ];
 
 const initialNotifications: SystemNotification[] = [
@@ -324,7 +324,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     ]);
   };
 
-  const apiBase = import.meta.env.VITE_API_BASE || '';
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
   // Load persisted updates from backend if available
   useEffect(() => {
@@ -607,7 +607,8 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ...userData,
       id: `emp-${Date.now()}`,
       active: true,
-      avatarColor: randomColor
+      avatarColor: randomColor,
+      password: 'password'
     };
 
     setUsers(prev => [...prev, newUser]);
@@ -628,9 +629,10 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     if (!user) return false;
     if (!user.active) return false;
+    if (!passwordInput.trim()) return false;
 
-    // Direct password match (seeds default to 'admin' / 'executive', custom has temp password)
-    const expectedPassword = user.password || 'password';
+    const expectedPassword = user.password;
+    if (!expectedPassword) return false;
     if (expectedPassword === passwordInput) {
       setCurrentUser(user);
       return true;
