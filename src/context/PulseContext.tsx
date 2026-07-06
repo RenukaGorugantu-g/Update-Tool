@@ -276,6 +276,11 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('pulse-mock-chat-messages', JSON.stringify(mockChatMessages));
   }, [mockChatMessages]);
 
+  // Sync users with backend
+  useEffect(() => {
+    localStorage.setItem('pulse-users', JSON.stringify(users));
+  }, [users]);
+
   // Projects list
   const projects = ['Website Development', 'Marketplace', 'Client Projects', 'Internal Improvements'];
 
@@ -331,6 +336,23 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+
+  // Load persisted users from backend if available (for cross-device sync)
+  useEffect(() => {
+    if (!apiBase) return;
+    (async () => {
+      try {
+        const resp = await fetch(`${apiBase}/api/users`);
+        const json = await resp.json().catch(() => null);
+        if (json?.success && Array.isArray(json.users) && json.users.length > 0) {
+          setUsers(json.users);
+          localStorage.setItem('pulse-users', JSON.stringify(json.users));
+        }
+      } catch (error) {
+        console.warn('Unable to load users from backend, using local data:', error);
+      }
+    })();
+  }, [apiBase]);
 
   // Load persisted updates from backend if available
   useEffect(() => {
@@ -621,13 +643,43 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       password: 'password'
     };
 
-    setUsers(prev => [...prev, newUser]);
+    setUsers(prev => {
+      const updated = [...prev, newUser];
+      // Persist to backend (best-effort)
+      (async () => {
+        try {
+          if (!apiBase) return;
+          await fetch(`${apiBase}/api/users`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updated)
+          });
+        } catch (err) {
+          console.warn('Failed to persist new user to backend:', err);
+        }
+      })();
+      return updated;
+    });
   };
 
   const toggleUserActiveStatus = (userId: string) => {
-    setUsers(prev =>
-      prev.map(u => (u.id === userId ? { ...u, active: !u.active } : u))
-    );
+    setUsers(prev => {
+      const updated = prev.map(u => (u.id === userId ? { ...u, active: !u.active } : u));
+      // Persist to backend (best-effort)
+      (async () => {
+        try {
+          if (!apiBase) return;
+          await fetch(`${apiBase}/api/users`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updated)
+          });
+        } catch (err) {
+          console.warn('Failed to persist user status change to backend:', err);
+        }
+      })();
+      return updated;
+    });
   };
 
   // Auth Operations

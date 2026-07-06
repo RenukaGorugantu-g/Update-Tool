@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { google } from 'googleapis';
 import { createTokenStore } from './tokenStore.js';
 import { createUpdatesStore } from './updatesStore.js';
+import { createUsersStore } from './usersStore.js';
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ const redirectUri = process.env.GOOGLE_REDIRECT_URI && process.env.GOOGLE_REDIRE
   : process.env.GOOGLE_REDIRECT_URI_CALLBACK || 'http://localhost:5000/auth/google/callback';
 const tokenStore = createTokenStore();
 const updatesStore = createUpdatesStore();
+const usersStore = createUsersStore();
 const oauthScopes = [
   'https://www.googleapis.com/auth/gmail.send',
   'openid',
@@ -240,6 +242,32 @@ app.get('/auth/google/callback', async (req, res) => {
     redirectTarget.searchParams.set('gmail', 'error');
     redirectTarget.searchParams.set('gmailMessage', encodeURIComponent(error.message));
     return res.redirect(redirectTarget.toString());
+  }
+});
+
+// Users persistence API (for cross-device employee list sync)
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await usersStore.getAll();
+    return res.json({ success: true, users });
+  } catch (error) {
+    console.error('get users error:', error);
+    return res.status(500).json({ success: false, error: 'Unable to read users.' });
+  }
+});
+
+app.post('/api/users', async (req, res) => {
+  const users = req.body;
+  if (!Array.isArray(users)) {
+    return res.status(400).json({ success: false, error: 'Users payload must be an array.' });
+  }
+
+  try {
+    const saved = await usersStore.save(users);
+    return res.json({ success: true, users: saved });
+  } catch (error) {
+    console.error('save users error:', error);
+    return res.status(500).json({ success: false, error: 'Unable to persist users.' });
   }
 });
 
