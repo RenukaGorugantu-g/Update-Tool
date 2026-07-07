@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "postinstall": "npm install --prefix server",
+    "postinstall": "node scripts/install-server-deps.mjs",
     "start": "cd server && npm start",
     "lint": "oxlint",
     "preview": "vite preview",
