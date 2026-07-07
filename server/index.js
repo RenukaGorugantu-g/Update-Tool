@@ -16,9 +16,15 @@ const PORT = process.env.PORT || 5000;
 const gmailClientId = process.env.GOOGLE_CLIENT_ID;
 const gmailClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 const defaultFrontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-const redirectUri = process.env.GOOGLE_REDIRECT_URI && process.env.GOOGLE_REDIRECT_URI !== 'https://developers.google.com/oauthplayground'
-  ? process.env.GOOGLE_REDIRECT_URI
-  : process.env.GOOGLE_REDIRECT_URI_CALLBACK || 'https://update-tool.onrender.com/auth/google/callback';
+const isLocalServer = !process.env.RENDER && !process.env.RENDER_SERVICE_ID && process.env.NODE_ENV !== 'production';
+const configuredRedirectUri = process.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_REDIRECT_URI_CALLBACK;
+const isInvalidProductionRedirectUri =
+  !configuredRedirectUri ||
+  configuredRedirectUri === 'https://developers.google.com/oauthplayground' ||
+  (!isLocalServer && configuredRedirectUri.includes('localhost'));
+const redirectUri = isInvalidProductionRedirectUri
+  ? 'https://update-tool.onrender.com/auth/google/callback'
+  : configuredRedirectUri;
 const tokenStore = createTokenStore();
 const updatesStore = createUpdatesStore();
 const fileUsersStore = createUsersStore();
