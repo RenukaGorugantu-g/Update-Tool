@@ -18,7 +18,7 @@ const gmailClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 const defaultFrontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 const redirectUri = process.env.GOOGLE_REDIRECT_URI && process.env.GOOGLE_REDIRECT_URI !== 'https://developers.google.com/oauthplayground'
   ? process.env.GOOGLE_REDIRECT_URI
-  : process.env.GOOGLE_REDIRECT_URI_CALLBACK || 'http://localhost:5000/auth/google/callback';
+  : process.env.GOOGLE_REDIRECT_URI_CALLBACK || 'https://update-tool.onrender.com/auth/google/callback';
 const tokenStore = createTokenStore();
 const updatesStore = createUpdatesStore();
 const fileUsersStore = createUsersStore();

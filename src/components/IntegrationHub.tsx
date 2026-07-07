@@ -13,17 +13,10 @@ interface IntegrationStatus {
   };
 }
 
+const RENDER_API_BASE = 'https://update-tool.onrender.com';
+
 const getApiBase = () => {
-  const configuredBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '');
-  if (configuredBase) {
-    return configuredBase;
-  }
-
-  if (window.location.hostname === 'localhost') {
-    return 'http://localhost:5000';
-  }
-
-  return '';
+  return RENDER_API_BASE;
 };
 
 export const IntegrationHub: React.FC = () => {

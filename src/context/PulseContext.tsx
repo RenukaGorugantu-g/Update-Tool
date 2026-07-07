@@ -188,17 +188,10 @@ const initialMockChatMessages: MockChatMessage[] = [
 // --- Context Provider ---
 const PulseContext = createContext<PulseContextType | undefined>(undefined);
 
+const RENDER_API_BASE = 'https://update-tool.onrender.com';
+
 const getApiBase = () => {
-  const configuredBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '');
-  if (configuredBase) {
-    return configuredBase;
-  }
-
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return 'http://localhost:5000';
-  }
-
-  return '';
+  return RENDER_API_BASE;
 };
 
 export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

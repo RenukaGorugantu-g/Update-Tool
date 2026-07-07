@@ -18,17 +18,10 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
+const RENDER_API_BASE = 'https://update-tool.onrender.com';
+
 const getApiBase = () => {
-  const configuredBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '');
-  if (configuredBase) {
-    return configuredBase;
-  }
-
-  if (window.location.hostname === 'localhost') {
-    return 'http://localhost:5000';
-  }
-
-  return '';
+  return RENDER_API_BASE;
 };
 
 function App() {
@@ -78,7 +71,7 @@ function App() {
 
   const connectGmail = async () => {
     if (!apiBase) {
-      setGmailFeedback('Backend URL is not configured. Set VITE_API_BASE to your deployed backend URL, then redeploy the frontend.');
+      setGmailFeedback('Backend URL is not configured. Redeploy the frontend with the latest code.');
       setGmailConnectionState('not-connected');
       return;
     }
@@ -86,11 +79,11 @@ function App() {
     try {
       const healthResponse = await fetch(`${apiBase}/api/health`);
       if (!healthResponse.ok) {
-        throw new Error(`Backend health check failed with ${healthResponse.status}`);
+      throw new Error(`Backend health check failed with ${healthResponse.status}`);
       }
     } catch (error) {
       console.warn('Unable to reach backend before Gmail connect:', error);
-      setGmailFeedback('Backend is not reachable. Start the backend locally or set VITE_API_BASE to your deployed backend URL.');
+      setGmailFeedback('Backend is not reachable. Check that https://update-tool.onrender.com is live on Render.');
       setGmailConnectionState('not-connected');
       return;
     }
