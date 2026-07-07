@@ -17,6 +17,7 @@ export const AdminDashboard: React.FC = () => {
   const [generatedEmpId, setGeneratedEmpId] = useState('');
   const [tempPassword, setTempPassword] = useState('');
   const [formSuccess, setFormSuccess] = useState(false);
+  const [lastCreatedCredentials, setLastCreatedCredentials] = useState<{ email: string; employeeId: string; password: string } | null>(null);
 
   // Filter list
   const executives = users.filter(u => u.role === 'executive' || u.role === 'admin');
@@ -36,6 +37,11 @@ export const AdminDashboard: React.FC = () => {
       password: tempPassword
     });
 
+    setLastCreatedCredentials({
+      email: email.trim().toLowerCase(),
+      employeeId: generatedEmpId.trim(),
+      password: tempPassword
+    });
     setFormSuccess(true);
     setName('');
     setEmail('');
@@ -193,12 +199,18 @@ export const AdminDashboard: React.FC = () => {
                 fontSize: '0.8rem',
                 color: 'var(--accent-emerald)',
                 fontWeight: 700,
-                textAlign: 'center',
                 background: 'var(--accent-emerald-light)',
                 padding: '8px',
                 borderRadius: '8px'
               }}>
-                Account created and synchronized to organizational charts.
+                <div>Account created and synchronized.</div>
+                {lastCreatedCredentials && (
+                  <div style={{ marginTop: '6px', color: 'var(--text-primary)', fontWeight: 600, lineHeight: 1.5 }}>
+                    <div>Email: {lastCreatedCredentials.email}</div>
+                    <div>ID: {lastCreatedCredentials.employeeId}</div>
+                    <div>Password: {lastCreatedCredentials.password}</div>
+                  </div>
+                )}
               </div>
             )}
 

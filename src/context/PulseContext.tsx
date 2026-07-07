@@ -194,6 +194,41 @@ const getApiBase = () => {
   return RENDER_API_BASE;
 };
 
+const normalizeUserIdentity = (value: string) => value.trim().toLowerCase();
+
+const mergeUsers = (localUsers: User[], backendUsers: User[]) => {
+  const merged = new Map<string, User>();
+
+  [...backendUsers, ...localUsers].forEach(user => {
+    const emailKey = normalizeUserIdentity(user.email);
+    const employeeIdKey = normalizeUserIdentity(user.employeeId);
+    const existingEntry = Array.from(merged.entries()).find(([, existing]) =>
+      normalizeUserIdentity(existing.email) === emailKey ||
+      normalizeUserIdentity(existing.employeeId) === employeeIdKey
+    );
+
+    const normalizedUser = {
+      ...user,
+      email: emailKey,
+      employeeId: user.employeeId.trim(),
+      active: user.active !== false,
+      password: user.password || 'password'
+    };
+
+    if (existingEntry) {
+      merged.set(existingEntry[0], {
+        ...existingEntry[1],
+        ...normalizedUser,
+        id: existingEntry[1].id || normalizedUser.id
+      });
+    } else {
+      merged.set(user.id, normalizedUser);
+    }
+  });
+
+  return Array.from(merged.values());
+};
+
 export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<'light' | 'dark'>('light'); // Default to light mode
 
@@ -372,8 +407,14 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const resp = await fetch(`${apiBase}/api/users`);
         const json = await resp.json().catch(() => null);
         if (json?.success && Array.isArray(json.users) && json.users.length > 0) {
-          setUsers(json.users);
-          localStorage.setItem('pulse-users', JSON.stringify(json.users));
+          setUsers(prev => {
+            const mergedUsers = mergeUsers(prev, json.users);
+            localStorage.setItem('pulse-users', JSON.stringify(mergedUsers));
+            if (mergedUsers.length !== json.users.length) {
+              void persistUsers(mergedUsers);
+            }
+            return mergedUsers;
+          });
         }
       } catch (error) {
         console.warn('Unable to load users from backend, using local data:', error);
@@ -673,7 +714,13 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setUsers(prev => {
-      const updated = [...prev, newUser];
+      const existingUser = prev.find(user =>
+        normalizeUserIdentity(user.email) === normalizeUserIdentity(newUser.email) ||
+        normalizeUserIdentity(user.employeeId) === normalizeUserIdentity(newUser.employeeId)
+      );
+      const updated = existingUser
+        ? prev.map(user => user.id === existingUser.id ? { ...user, ...newUser, id: user.id, avatarColor: user.avatarColor || newUser.avatarColor } : user)
+        : [...prev, newUser];
       void persistUsers(updated);
       return updated;
     });

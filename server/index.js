@@ -86,8 +86,37 @@ const initialUsers = [
 ];
 
 const usersStore = {
+  normalize(users) {
+    const normalized = new Map();
+    users.forEach(user => {
+      const email = String(user.email || '').trim().toLowerCase();
+      const employeeId = String(user.employeeId || '').trim();
+      if (!email || !employeeId) return;
+
+      const existingKey = Array.from(normalized.entries()).find(([, existing]) =>
+        existing.email === email || existing.employeeId.toLowerCase() === employeeId.toLowerCase()
+      )?.[0];
+
+      const normalizedUser = {
+        ...user,
+        email,
+        employeeId,
+        active: user.active !== false,
+        password: user.password || 'password'
+      };
+
+      normalized.set(existingKey || user.id || `emp-${Date.now()}-${normalized.size}`, {
+        ...(existingKey ? normalized.get(existingKey) : {}),
+        ...normalizedUser,
+        id: existingKey || user.id || `emp-${Date.now()}-${normalized.size}`
+      });
+    });
+
+    return Array.from(normalized.values());
+  },
+
   async getAll() {
-    const users = await fileUsersStore.getAll();
+    const users = this.normalize(await fileUsersStore.getAll());
     if (users.length > 0) {
       return users;
     }
@@ -99,8 +128,9 @@ const usersStore = {
     if (!Array.isArray(users)) {
       throw new Error('Users must be an array.');
     }
-    await fileUsersStore.save(users);
-    return users;
+    const normalizedUsers = this.normalize(users);
+    await fileUsersStore.save(normalizedUsers);
+    return normalizedUsers;
   }
 };
 
