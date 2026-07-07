@@ -352,7 +352,10 @@ app.get('/auth/google/callback', async (req, res) => {
     console.error('google callback error:', error);
     const redirectTarget = new URL(returnTo, defaultFrontendUrl);
     redirectTarget.searchParams.set('gmail', 'error');
-    redirectTarget.searchParams.set('gmailMessage', encodeURIComponent(error.message));
+    const message = /invalid_client/i.test(error.message)
+      ? 'Google OAuth client ID and client secret do not match. Copy both values from the same Web application OAuth client into Render, then redeploy.'
+      : error.message;
+    redirectTarget.searchParams.set('gmailMessage', encodeURIComponent(message));
     return res.redirect(redirectTarget.toString());
   }
 });
@@ -479,6 +482,8 @@ app.get('/api/integrations/status', async (req, res) => {
     success: true,
     gmail: {
       oauthConfigured: Boolean(gmailClientId && gmailClientSecret),
+      clientId: gmailClientId || null,
+      redirectUri,
       connectedAccounts: connectedGmailAccounts
     },
     chat: {
