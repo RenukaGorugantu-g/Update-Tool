@@ -1,12 +1,61 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { usePulse } from '../context/PulseContext';
 import { Terminal, Send, Database, Network, ChevronRight } from 'lucide-react';
+
+interface IntegrationStatus {
+  gmail: {
+    oauthConfigured: boolean;
+    connectedAccounts: string[];
+  };
+  chat: {
+    configuredSpaces: string[];
+    missingSpaces: string[];
+  };
+}
+
+const getApiBase = () => {
+  const configuredBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '');
+  if (configuredBase) {
+    return configuredBase;
+  }
+
+  if (window.location.hostname === 'localhost') {
+    return 'http://localhost:5000';
+  }
+
+  return '';
+};
 
 export const IntegrationHub: React.FC = () => {
   const { integrationLogs } = usePulse();
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
+  const [integrationStatus, setIntegrationStatus] = useState<IntegrationStatus | null>(null);
 
   const activeLog = integrationLogs.find(l => l.id === selectedLogId) || integrationLogs[0];
+  const apiBase = getApiBase();
+  const gmailReady = Boolean(integrationStatus?.gmail.oauthConfigured);
+  const chatReady = Boolean(integrationStatus?.chat.configuredSpaces.length);
+
+  useEffect(() => {
+    if (!apiBase) {
+      return;
+    }
+
+    (async () => {
+      try {
+        const response = await fetch(`${apiBase}/api/integrations/status`);
+        const payload = await response.json().catch(() => null);
+        if (payload?.success) {
+          setIntegrationStatus({
+            gmail: payload.gmail,
+            chat: payload.chat
+          });
+        }
+      } catch (error) {
+        console.warn('Unable to load integration status:', error);
+      }
+    })();
+  }, [apiBase]);
 
   return (
     <div className="fade-in" style={{ padding: '8px 0' }}>
@@ -28,12 +77,14 @@ export const IntegrationHub: React.FC = () => {
             width: '10px',
             height: '10px',
             borderRadius: '50%',
-            backgroundColor: 'var(--accent-emerald)',
-            boxShadow: '0 0 8px var(--accent-emerald)'
+            backgroundColor: gmailReady ? 'var(--accent-emerald)' : 'var(--accent-amber)',
+            boxShadow: gmailReady ? '0 0 8px var(--accent-emerald)' : '0 0 8px var(--accent-amber)'
           }}></div>
           <div>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Gmail API Service</span>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: 800 }}>oauth_v2: Connected</h4>
+            <h4 style={{ fontSize: '0.9rem', fontWeight: 800 }}>
+              {gmailReady ? `oauth_v2: ${integrationStatus?.gmail.connectedAccounts.length || 0} account(s)` : 'oauth_v2: Setup needed'}
+            </h4>
           </div>
         </div>
 
@@ -43,12 +94,14 @@ export const IntegrationHub: React.FC = () => {
             width: '10px',
             height: '10px',
             borderRadius: '50%',
-            backgroundColor: 'var(--accent-emerald)',
-            boxShadow: '0 0 8px var(--accent-emerald)'
+            backgroundColor: chatReady ? 'var(--accent-emerald)' : 'var(--accent-amber)',
+            boxShadow: chatReady ? '0 0 8px var(--accent-emerald)' : '0 0 8px var(--accent-amber)'
           }}></div>
           <div>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Google Chat Webhooks</span>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: 800 }}>spaces_v1: Connected</h4>
+            <h4 style={{ fontSize: '0.9rem', fontWeight: 800 }}>
+              {chatReady ? `spaces_v1: ${integrationStatus?.chat.configuredSpaces.length} space(s)` : 'spaces_v1: Setup needed'}
+            </h4>
           </div>
         </div>
 

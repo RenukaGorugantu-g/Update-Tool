@@ -18,6 +18,19 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
+const getApiBase = () => {
+  const configuredBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '');
+  if (configuredBase) {
+    return configuredBase;
+  }
+
+  if (window.location.hostname === 'localhost') {
+    return 'http://localhost:5000';
+  }
+
+  return '';
+};
+
 function App() {
   const { 
     currentUser, 
@@ -31,7 +44,7 @@ function App() {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [gmailConnectionState, setGmailConnectionState] = useState<'loading' | 'connected' | 'not-connected'>('loading');
   const [gmailFeedback, setGmailFeedback] = useState<string | null>(null);
-  const apiBase = import.meta.env.VITE_API_BASE || '';
+  const apiBase = getApiBase();
 
   const persistGmailConnection = (email: string, connected: boolean) => {
     try {
@@ -63,9 +76,26 @@ function App() {
     }
   };
 
-  const connectGmail = () => {
-    const baseUrl = apiBase || 'http://localhost:5000';
-    window.location.href = `${baseUrl}/auth/google?returnTo=${encodeURIComponent(window.location.origin)}`;
+  const connectGmail = async () => {
+    if (!apiBase) {
+      setGmailFeedback('Backend URL is not configured. Set VITE_API_BASE to your deployed backend URL, then redeploy the frontend.');
+      setGmailConnectionState('not-connected');
+      return;
+    }
+
+    try {
+      const healthResponse = await fetch(`${apiBase}/api/health`);
+      if (!healthResponse.ok) {
+        throw new Error(`Backend health check failed with ${healthResponse.status}`);
+      }
+    } catch (error) {
+      console.warn('Unable to reach backend before Gmail connect:', error);
+      setGmailFeedback('Backend is not reachable. Start the backend locally or set VITE_API_BASE to your deployed backend URL.');
+      setGmailConnectionState('not-connected');
+      return;
+    }
+
+    window.location.href = `${apiBase}/auth/google?returnTo=${encodeURIComponent(window.location.origin)}`;
   };
 
   // When changing users, make sure the active tab is permitted for the new user's role
@@ -333,8 +363,7 @@ function App() {
                         ) : (
                           <button
                             onClick={() => {
-                              setShowUserDropdown(false);
-                              connectGmail();
+                              void connectGmail();
                             }}
                             className="btn btn-secondary"
                             style={{ padding: '4px 8px', fontSize: '0.7rem', borderRadius: '999px' }}

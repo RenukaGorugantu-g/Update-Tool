@@ -433,6 +433,25 @@ app.get('/api/health', (req, res) => {
   return res.json({ ok: true, message: 'Backend is running.' });
 });
 
+app.get('/api/integrations/status', async (req, res) => {
+  const connectedGmailAccounts = Object.keys(await tokenStore.getAll());
+  const configuredChatSpaces = Object.entries(chatWebhookMap)
+    .filter(([, webhook]) => Boolean(webhook))
+    .map(([spaceId]) => spaceId);
+
+  return res.json({
+    success: true,
+    gmail: {
+      oauthConfigured: Boolean(gmailClientId && gmailClientSecret),
+      connectedAccounts: connectedGmailAccounts
+    },
+    chat: {
+      configuredSpaces: configuredChatSpaces,
+      missingSpaces: Object.keys(chatWebhookMap).filter(spaceId => !chatWebhookMap[spaceId])
+    }
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Updates Tool backend listening on http://localhost:${PORT}`);
 });

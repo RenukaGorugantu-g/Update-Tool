@@ -36,6 +36,10 @@ const writeTokenStore = async (storageFilePath, tokenStore) => {
 
 // Create a storage interface that can later be swapped for a database.
 export const createTokenStore = (storageFilePath = defaultStoragePath) => ({
+  async getAll() {
+    return readTokenStore(storageFilePath);
+  },
+
   async getToken(email) {
     const store = await readTokenStore(storageFilePath);
     return store[email] ? { ...store[email] } : null;

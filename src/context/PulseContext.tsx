@@ -188,6 +188,19 @@ const initialMockChatMessages: MockChatMessage[] = [
 // --- Context Provider ---
 const PulseContext = createContext<PulseContextType | undefined>(undefined);
 
+const getApiBase = () => {
+  const configuredBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '');
+  if (configuredBase) {
+    return configuredBase;
+  }
+
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://localhost:5000';
+  }
+
+  return '';
+};
+
 export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<'light' | 'dark'>('light'); // Default to light mode
 
@@ -336,7 +349,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     ]);
   };
 
-  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+  const apiBase = getApiBase();
 
   const persistUsers = async (nextUsers: User[]) => {
     localStorage.setItem('pulse-users', JSON.stringify(nextUsers));
@@ -658,10 +671,12 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     const newUser: User = {
       ...userData,
+      email: userData.email.trim().toLowerCase(),
+      employeeId: userData.employeeId.trim(),
       id: `emp-${Date.now()}`,
       active: true,
       avatarColor: randomColor,
-      password: userData.password
+      password: userData.password || 'password'
     };
 
     setUsers(prev => {
