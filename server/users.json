@@ -1,0 +1,67 @@
+[
+  {
+    "id": "u-admin",
+    "name": "Admin Root",
+    "email": "info@maplelearningsolutions.com",
+    "role": "admin",
+    "department": "Management",
+    "pod": "India Pod",
+    "reportingManager": "Board",
+    "employeeId": "MP-0000",
+    "active": true,
+    "avatarColor": "#dc2626",
+    "password": "admin"
+  },
+  {
+    "id": "u-sandeep",
+    "name": "Sandeep M",
+    "email": "sandeep@maplelearningsolutions.com",
+    "role": "executive",
+    "department": "Executive Board",
+    "pod": "India Pod",
+    "reportingManager": "CEO",
+    "employeeId": "MP-0001",
+    "active": true,
+    "avatarColor": "#ec4899",
+    "password": "executive"
+  },
+  {
+    "id": "u-krishna",
+    "name": "Krishna",
+    "email": "krishna@maplelearningsolutions.com",
+    "role": "executive",
+    "department": "Executive Board",
+    "pod": "India Pod",
+    "reportingManager": "CEO",
+    "employeeId": "MP-0002",
+    "active": true,
+    "avatarColor": "#6366f1",
+    "password": "executive"
+  },
+  {
+    "id": "u-rathish",
+    "name": "Rathish",
+    "email": "rathish@maplelearningsolutions.com",
+    "role": "executive",
+    "department": "Executive Board",
+    "pod": "UAE Pod",
+    "reportingManager": "CEO",
+    "employeeId": "MP-0003",
+    "active": true,
+    "avatarColor": "#f59e0b",
+    "password": "executive"
+  },
+  {
+    "name": "Renuka Gorugantu",
+    "email": "renuka@maplelearningsolutions.com",
+    "role": "employee",
+    "department": "Development Team",
+    "pod": "India Pod",
+    "reportingManager": "Sandeep M",
+    "employeeId": "MP-9604",
+    "password": "Renu@Pulse2026!",
+    "id": "emp-1783495121131",
+    "active": true,
+    "avatarColor": "#ea580c"
+  }
+]
