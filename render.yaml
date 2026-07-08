@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: update-tool-backend
+    env: node
+    plan: free
+    buildCommand: npm install && npm install --prefix server
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: FRONTEND_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: CHAT_WEBHOOK_SPACE_DEVELOPMENT
+        sync: false
+      - key: CHAT_WEBHOOK_SPACE_DESIGN
+        sync: false
+      - key: CHAT_WEBHOOK_SPACE_MARKETING
+        sync: false
+      - key: CHAT_WEBHOOK_SPACE_SALES
+        sync: false
+      - key: CHAT_WEBHOOK_SPACE_CLIENT_SUCCESS
+        sync: false
+      - key: CHAT_WEBHOOK_SPACE_GENERAL
+        sync: false

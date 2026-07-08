@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { usePulse } from './context/PulseContext';
 import { Sidebar } from './components/Sidebar';
+<<<<<<< HEAD
 import { EmployeeDashboard } from './components/EmployeeDashboardRedesigned';
+=======
+import { EmployeeDashboard } from './components/EmployeeDashboard';
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
 import { ExecutiveDashboard } from './components/ExecutiveDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { OrgChart } from './components/OrgChart';
@@ -18,6 +22,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
+<<<<<<< HEAD
 const getApiBase = () => {
   const configuredBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '');
   if (configuredBase) {
@@ -29,6 +34,12 @@ const getApiBase = () => {
   }
 
   return '';
+=======
+const RENDER_API_BASE = 'https://update-tool.onrender.com';
+
+const getApiBase = () => {
+  return RENDER_API_BASE;
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
 };
 
 function App() {
@@ -78,7 +89,11 @@ function App() {
 
   const connectGmail = async () => {
     if (!apiBase) {
+<<<<<<< HEAD
       setGmailFeedback('Backend URL is not configured. Set VITE_API_BASE to your deployed backend URL, then redeploy the frontend.');
+=======
+      setGmailFeedback('Backend URL is not configured. Redeploy the frontend with the latest code.');
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
       setGmailConnectionState('not-connected');
       return;
     }
@@ -86,11 +101,19 @@ function App() {
     try {
       const healthResponse = await fetch(`${apiBase}/api/health`);
       if (!healthResponse.ok) {
+<<<<<<< HEAD
         throw new Error(`Backend health check failed with ${healthResponse.status}`);
       }
     } catch (error) {
       console.warn('Unable to reach backend before Gmail connect:', error);
       setGmailFeedback('Backend is not reachable. Start the backend locally or set VITE_API_BASE to your deployed backend URL.');
+=======
+      throw new Error(`Backend health check failed with ${healthResponse.status}`);
+      }
+    } catch (error) {
+      console.warn('Unable to reach backend before Gmail connect:', error);
+      setGmailFeedback('Backend is not reachable. Check that https://update-tool.onrender.com is live on Render.');
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
       setGmailConnectionState('not-connected');
       return;
     }

@@ -62,7 +62,10 @@ export interface UpdateRecord {
   projectName: string;
   files: { name: string; size: string }[];
   timestamp: string;
+<<<<<<< HEAD
   createdAt?: string;
+=======
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
   comments: Comment[];
 }
 
@@ -108,11 +111,19 @@ interface PulseContextType {
   addChatMessage: (sender: 'user' | 'ai', text: string) => void;
   clearChat: () => void;
   logIntegration: (type: 'gmail' | 'chat', recipient: string, subject: string | undefined, body: string, payload: any) => void;
+<<<<<<< HEAD
   submitEmployeeUpdate: (update: Omit<UpdateRecord, 'id' | 'employeeId' | 'employeeName' | 'department' | 'pod' | 'date' | 'timestamp' | 'comments'>) => Promise<{ deliveryStatus: 'ok' | 'partial' | 'failed' }>;
   resetSprintData: () => Promise<void>;
   addCommentToUpdate: (updateId: string, content: string, sentVia: { gmail: boolean; chat: boolean; internal: boolean }) => void;
   createNewUser: (user: Omit<User, 'id' | 'active' | 'avatarColor'>) => void;
   toggleUserActiveStatus: (userId: string) => void;
+=======
+  submitEmployeeUpdate: (update: Omit<UpdateRecord, 'id' | 'employeeId' | 'employeeName' | 'department' | 'pod' | 'date' | 'timestamp' | 'comments'>) => void;
+  addCommentToUpdate: (updateId: string, content: string, sentVia: { gmail: boolean; chat: boolean; internal: boolean }) => void;
+  createNewUser: (user: Omit<User, 'id' | 'active' | 'avatarColor'>) => void;
+  toggleUserActiveStatus: (userId: string) => void;
+  resetPassword: (loginInput: string, newPassword: string) => boolean;
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
   parseVoiceUpdateAI: (voiceText: string) => Promise<{ completed: string[]; working: string[]; blockers: string[] }>;
   askExecutiveAI: (query: string) => Promise<string>;
   playElevenLabsTTS: (text: string) => Promise<void>;
@@ -189,6 +200,7 @@ const initialMockChatMessages: MockChatMessage[] = [
 // --- Context Provider ---
 const PulseContext = createContext<PulseContextType | undefined>(undefined);
 
+<<<<<<< HEAD
 const getApiBase = () => {
   const configuredBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '');
   if (configuredBase) {
@@ -203,6 +215,47 @@ const getApiBase = () => {
   }
 
   return '';
+=======
+const RENDER_API_BASE = 'https://update-tool.onrender.com';
+
+const getApiBase = () => {
+  return RENDER_API_BASE;
+};
+
+const normalizeUserIdentity = (value: string) => value.trim().toLowerCase();
+
+const mergeUsers = (localUsers: User[], backendUsers: User[]) => {
+  const merged = new Map<string, User>();
+
+  [...backendUsers, ...localUsers].forEach(user => {
+    const emailKey = normalizeUserIdentity(user.email);
+    const employeeIdKey = normalizeUserIdentity(user.employeeId);
+    const existingEntry = Array.from(merged.entries()).find(([, existing]) =>
+      normalizeUserIdentity(existing.email) === emailKey ||
+      normalizeUserIdentity(existing.employeeId) === employeeIdKey
+    );
+
+    const normalizedUser = {
+      ...user,
+      email: emailKey,
+      employeeId: user.employeeId.trim(),
+      active: user.active !== false,
+      password: user.password || 'password'
+    };
+
+    if (existingEntry) {
+      merged.set(existingEntry[0], {
+        ...existingEntry[1],
+        ...normalizedUser,
+        id: existingEntry[1].id || normalizedUser.id
+      });
+    } else {
+      merged.set(user.id, normalizedUser);
+    }
+  });
+
+  return Array.from(merged.values());
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
 };
 
 export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -355,6 +408,29 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const apiBase = getApiBase();
 
+<<<<<<< HEAD
+=======
+  const persistUsers = async (nextUsers: User[]) => {
+    localStorage.setItem('pulse-users', JSON.stringify(nextUsers));
+    if (!apiBase) return;
+
+    try {
+      const response = await fetch(`${apiBase}/api/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nextUsers)
+      });
+
+      if (!response.ok) {
+        const json = await response.json().catch(() => null);
+        console.warn('Failed to persist users to backend:', json || response.statusText);
+      }
+    } catch (err) {
+      console.warn('Failed to persist users to backend:', err);
+    }
+  };
+
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
   // Load persisted users from backend if available (for cross-device sync)
   useEffect(() => {
     if (!apiBase) return;
@@ -363,8 +439,19 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const resp = await fetch(`${apiBase}/api/users`);
         const json = await resp.json().catch(() => null);
         if (json?.success && Array.isArray(json.users) && json.users.length > 0) {
+<<<<<<< HEAD
           setUsers(json.users);
           localStorage.setItem('pulse-users', JSON.stringify(json.users));
+=======
+          setUsers(prev => {
+            const mergedUsers = mergeUsers(prev, json.users);
+            localStorage.setItem('pulse-users', JSON.stringify(mergedUsers));
+            if (mergedUsers.length !== json.users.length) {
+              void persistUsers(mergedUsers);
+            }
+            return mergedUsers;
+          });
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
         }
       } catch (error) {
         console.warn('Unable to load users from backend, using local data:', error);
@@ -450,8 +537,13 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Submit daily updates
+<<<<<<< HEAD
   const submitEmployeeUpdate = async (newUpdate: Omit<UpdateRecord, 'id' | 'employeeId' | 'employeeName' | 'department' | 'pod' | 'date' | 'timestamp' | 'comments'>) => {
     if (!currentUser) return { deliveryStatus: 'failed' as const };
+=======
+  const submitEmployeeUpdate = (newUpdate: Omit<UpdateRecord, 'id' | 'employeeId' | 'employeeName' | 'department' | 'pod' | 'date' | 'timestamp' | 'comments'>) => {
+    if (!currentUser) return;
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
     const today = new Date().toISOString().split('T')[0];
     
     // Check if user already submitted for today
@@ -486,6 +578,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     });
 
+<<<<<<< HEAD
     let deliveryStatus: 'ok' | 'partial' | 'failed' = 'ok';
 
     try {
@@ -528,11 +621,29 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       'Please review this progress and follow up if any support is needed.'
     ].join('\n');
 
+=======
+    // Persist to backend (best-effort)
+    (async () => {
+      try {
+        if (!apiBase) return;
+        await fetch(`${apiBase}/api/updates`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record)
+        });
+      } catch (err) {
+        // ignore persistence failure — app remains functional
+      }
+    })();
+
+    // Send toast notifications
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
     const hasBlockers = record.blockers.length > 0 && 
                          record.blockers[0].toLowerCase() !== 'none' && 
                          record.blockers[0].toLowerCase() !== 'none reported' &&
                          record.blockers[0].trim() !== '';
 
+<<<<<<< HEAD
 setNotifications(prev => [
         {
           id: hasBlockers ? `notif-blocker-${Date.now()}` : `notif-update-${Date.now()}`,
@@ -540,12 +651,21 @@ setNotifications(prev => [
             ? `Blocker alert! ${currentUser.name} (${currentUser.department}) flagged: "${record.blockers[0]}"`
             : `${currentUser.name} successfully submitted today's status update for ${record.projectName}.`,
           type: hasBlockers ? (record.priority === 'critical' || record.priority === 'high' ? 'blocker' : 'warning') : 'success',
+=======
+    if (hasBlockers) {
+      setNotifications(prev => [
+        {
+          id: `notif-blocker-${Date.now()}`,
+          text: `Blocker alert! ${currentUser.name} (${currentUser.department}) flagged: "${record.blockers[0]}"`,
+          type: record.priority === 'critical' || record.priority === 'high' ? 'blocker' : 'warning',
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
           timestamp: new Date().toISOString(),
           read: false
         },
         ...prev
       ]);
 
+<<<<<<< HEAD
       if (hasBlockers) {
         const blockerSubject = `Blocker Alert Logged: ${record.projectName}`;
         const blockerBody = `Hi ${currentUser.name},\n\nYour blocker has been logged for the project ${record.projectName}:\n"${record.blockers[0]}"\n\nYour manager will be notified and the team space has been updated in Google Chat.\n\nBest,\nMaple Pulse`;
@@ -590,6 +710,51 @@ setNotifications(prev => [
 
     setUpdates([]);
     localStorage.removeItem('pulse-updates');
+=======
+      const blockerSubject = `Blocker Alert Logged: ${record.projectName}`;
+      const blockerBody = `Hi ${currentUser.name},\n\nYour blocker has been logged for the project ${record.projectName}:\n"${record.blockers[0]}"\n\nYour manager will be notified and the team space has been updated in Google Chat.\n\nBest,\nMaple Pulse`;
+
+      void sendLiveGmail(currentUser.email, blockerSubject, blockerBody);
+
+      const newEmailRecord: MockEmail = {
+        id: `email-${Date.now()}`,
+        senderName: 'Maple Pulse Notifications',
+        senderEmail: 'notifications@maplelearningsolutions.com',
+        recipientEmail: currentUser.email,
+        subject: blockerSubject,
+        body: blockerBody,
+        timestamp: new Date().toISOString(),
+        read: false
+      };
+      setMockEmails(prev => [newEmailRecord, ...prev]);
+
+      const chatSpaceId = getChatSpaceId(currentUser.department);
+      const chatBody = `💬 Blocker logged by ${currentUser.name} for ${record.projectName}: "${record.blockers[0]}"`;
+      void sendLiveChat(chatSpaceId, chatBody);
+
+      const newChatRecord: MockChatMessage = {
+        id: `chat-${Date.now()}`,
+        spaceId: chatSpaceId,
+        senderName: 'Maple Pulse Bot',
+        senderId: 'system-bot',
+        avatarColor: '#8b5cf6',
+        text: chatBody,
+        timestamp: new Date().toISOString()
+      };
+      setMockChatMessages(prev => [...prev, newChatRecord]);
+    } else {
+      setNotifications(prev => [
+        {
+          id: `notif-update-${Date.now()}`,
+          text: `${currentUser.name} successfully submitted today's status update for ${record.projectName}.`,
+          type: 'success',
+          timestamp: new Date().toISOString(),
+          read: false
+        },
+        ...prev
+      ]);
+    }
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
   };
 
   // Post comments and trigger mock integration hooks
@@ -620,13 +785,21 @@ setNotifications(prev => [
       return copy;
     });
 
+<<<<<<< HEAD
+=======
+    // Persist updated update with new comment (best-effort)
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
     (async () => {
       try {
         if (!apiBase) return;
         const response = await fetch(`${apiBase}/api/updates`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+<<<<<<< HEAD
           body: JSON.stringify({ ...updated, sendNotification: false, user: { name: currentUser.name, email: currentUser.email, department: currentUser.department } })
+=======
+          body: JSON.stringify(updated)
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
         });
         if (!response.ok) {
           const json = await response.json().catch(() => null);
@@ -678,6 +851,7 @@ setNotifications(prev => [
 
   // Add new employee
   const createNewUser = (userData: Omit<User, 'id' | 'active' | 'avatarColor'>) => {
+<<<<<<< HEAD
     const normalizedEmail = userData.email.trim().toLowerCase();
     const normalizedEmployeeId = userData.employeeId.trim();
     const existingUser = users.find(
@@ -705,6 +879,15 @@ setNotifications(prev => [
       ...userData,
       email: normalizedEmail,
       employeeId: normalizedEmployeeId,
+=======
+    const colorOptions = ['#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#2563eb', '#4f46e5', '#7c3aed', '#db2777'];
+    const randomColor = colorOptions[Math.floor(Math.random() * colorOptions.length)];
+    
+    const newUser: User = {
+      ...userData,
+      email: userData.email.trim().toLowerCase(),
+      employeeId: userData.employeeId.trim(),
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
       id: `emp-${Date.now()}`,
       active: true,
       avatarColor: randomColor,
@@ -712,6 +895,7 @@ setNotifications(prev => [
     };
 
     setUsers(prev => {
+<<<<<<< HEAD
       const updated = [...prev, newUser];
       // Persist to backend (best-effort)
       (async () => {
@@ -726,6 +910,16 @@ setNotifications(prev => [
           console.warn('Failed to persist new user to backend:', err);
         }
       })();
+=======
+      const existingUser = prev.find(user =>
+        normalizeUserIdentity(user.email) === normalizeUserIdentity(newUser.email) ||
+        normalizeUserIdentity(user.employeeId) === normalizeUserIdentity(newUser.employeeId)
+      );
+      const updated = existingUser
+        ? prev.map(user => user.id === existingUser.id ? { ...user, ...newUser, id: user.id, avatarColor: user.avatarColor || newUser.avatarColor } : user)
+        : [...prev, newUser];
+      void persistUsers(updated);
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
       return updated;
     });
   };
@@ -733,6 +927,7 @@ setNotifications(prev => [
   const toggleUserActiveStatus = (userId: string) => {
     setUsers(prev => {
       const updated = prev.map(u => (u.id === userId ? { ...u, active: !u.active } : u));
+<<<<<<< HEAD
       // Persist to backend (best-effort)
       (async () => {
         try {
@@ -746,12 +941,16 @@ setNotifications(prev => [
           console.warn('Failed to persist user status change to backend:', err);
         }
       })();
+=======
+      void persistUsers(updated);
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
       return updated;
     });
   };
 
   // Auth Operations
   const login = (loginInput: string, passwordInput: string): boolean => {
+<<<<<<< HEAD
     const user = users.find(
       u => u.email.toLowerCase() === loginInput.trim().toLowerCase() ||
            u.employeeId.toLowerCase() === loginInput.trim().toLowerCase()
@@ -769,6 +968,43 @@ setNotifications(prev => [
     }
 
     return false;
+=======
+    const normalizedLogin = loginInput.trim().toLowerCase();
+    const passwordValue = passwordInput.trim();
+    if (!normalizedLogin || !passwordValue) return false;
+
+    const matchingUsers = users.filter(
+      u => u.email.toLowerCase() === normalizedLogin ||
+           u.employeeId.toLowerCase() === normalizedLogin
+    );
+
+    const user = matchingUsers.find(u => u.active && u.password === passwordValue);
+    if (!user) return false;
+
+    setCurrentUser(user);
+    return true;
+  };
+
+  const resetPassword = (loginInput: string, newPassword: string): boolean => {
+    const normalizedLogin = loginInput.trim().toLowerCase();
+    const passwordValue = newPassword.trim();
+    if (!normalizedLogin || !passwordValue) return false;
+
+    const targetUser = users.find(
+      u => u.active &&
+           (u.email.toLowerCase() === normalizedLogin || u.employeeId.toLowerCase() === normalizedLogin)
+    );
+
+    if (!targetUser) return false;
+
+    setUsers(prev => {
+      const updated = prev.map(user => user.id === targetUser.id ? { ...user, password: passwordValue } : user);
+      void persistUsers(updated);
+      return updated;
+    });
+
+    return true;
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
   };
 
   const logout = () => {
@@ -976,10 +1212,17 @@ setNotifications(prev => [
         clearChat,
         logIntegration,
         submitEmployeeUpdate,
+<<<<<<< HEAD
         resetSprintData,
         addCommentToUpdate,
         createNewUser,
         toggleUserActiveStatus,
+=======
+        addCommentToUpdate,
+        createNewUser,
+        toggleUserActiveStatus,
+        resetPassword,
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
         parseVoiceUpdateAI,
         askExecutiveAI,
         playElevenLabsTTS,

@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+<<<<<<< HEAD
 import { google } from 'googleapis';
 import { createTokenStore } from './tokenStore.js';
 import { loadServerEnv } from './envConfig.js';
@@ -8,11 +9,21 @@ import { createUsersStore } from './usersStore.js';
 import { createNotificationService } from './notificationService.js';
 
 loadServerEnv();
+=======
+import dotenv from 'dotenv';
+import { google } from 'googleapis';
+import { createTokenStore } from './tokenStore.js';
+import { createUpdatesStore } from './updatesStore.js';
+import { createUsersStore } from './usersStore.js';
+
+dotenv.config();
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
 
 const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json());
 
+<<<<<<< HEAD
 const PORT = process.env.PORT || 5000;
 const gmailClientId = process.env.GOOGLE_CLIENT_ID;
 const gmailClientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -24,6 +35,31 @@ const tokenStore = createTokenStore();
 const updatesStore = createUpdatesStore();
 
 // Seed users used only when the persisted directory has not been created yet.
+=======
+const cleanEnvValue = (value) => {
+  if (!value) return '';
+  return String(value).trim().replace(/^['"]|['"]$/g, '');
+};
+
+const PORT = process.env.PORT || 5000;
+const gmailClientId = cleanEnvValue(process.env.GOOGLE_CLIENT_ID);
+const gmailClientSecret = cleanEnvValue(process.env.GOOGLE_CLIENT_SECRET);
+const defaultFrontendUrl = cleanEnvValue(process.env.FRONTEND_URL) || 'http://localhost:5173';
+const isLocalServer = !process.env.RENDER && !process.env.RENDER_SERVICE_ID && process.env.NODE_ENV !== 'production';
+const configuredRedirectUri = cleanEnvValue(process.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_REDIRECT_URI_CALLBACK);
+const isInvalidProductionRedirectUri =
+  !configuredRedirectUri ||
+  configuredRedirectUri === 'https://developers.google.com/oauthplayground' ||
+  (!isLocalServer && configuredRedirectUri.includes('localhost'));
+const redirectUri = isInvalidProductionRedirectUri
+  ? 'https://update-tool.onrender.com/auth/google/callback'
+  : configuredRedirectUri;
+const tokenStore = createTokenStore();
+const updatesStore = createUpdatesStore();
+const fileUsersStore = createUsersStore();
+
+// File-backed users store. Seeds default users when users.json is empty.
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
 const initialUsers = [
   {
     "id": "u-admin",
@@ -79,6 +115,7 @@ const initialUsers = [
   }
 ];
 
+<<<<<<< HEAD
 const fileUsersStore = createUsersStore();
 let usersStoreData = null;
 const normalizeUsers = (users) => {
@@ -104,14 +141,60 @@ const usersStore = {
     }
 
     return usersStoreData;
+=======
+const usersStore = {
+  normalize(users) {
+    const normalized = new Map();
+    users.forEach(user => {
+      const email = String(user.email || '').trim().toLowerCase();
+      const employeeId = String(user.employeeId || '').trim();
+      if (!email || !employeeId) return;
+
+      const existingKey = Array.from(normalized.entries()).find(([, existing]) =>
+        existing.email === email || existing.employeeId.toLowerCase() === employeeId.toLowerCase()
+      )?.[0];
+
+      const normalizedUser = {
+        ...user,
+        email,
+        employeeId,
+        active: user.active !== false,
+        password: user.password || 'password'
+      };
+
+      normalized.set(existingKey || user.id || `emp-${Date.now()}-${normalized.size}`, {
+        ...(existingKey ? normalized.get(existingKey) : {}),
+        ...normalizedUser,
+        id: existingKey || user.id || `emp-${Date.now()}-${normalized.size}`
+      });
+    });
+
+    return Array.from(normalized.values());
+  },
+
+  async getAll() {
+    const users = this.normalize(await fileUsersStore.getAll());
+    if (users.length > 0) {
+      return users;
+    }
+
+    await fileUsersStore.save(initialUsers);
+    return initialUsers;
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
   },
   async save(users) {
     if (!Array.isArray(users)) {
       throw new Error('Users must be an array.');
     }
+<<<<<<< HEAD
     usersStoreData = normalizeUsers(users);
     await fileUsersStore.save(usersStoreData);
     return usersStoreData;
+=======
+    const normalizedUsers = this.normalize(users);
+    await fileUsersStore.save(normalizedUsers);
+    return normalizedUsers;
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
   }
 };
 
@@ -131,8 +214,11 @@ const chatWebhookMap = {
   space_general: process.env.CHAT_WEBHOOK_SPACE_GENERAL
 };
 
+<<<<<<< HEAD
 console.log('Google Chat webhook configured:', Boolean(chatWebhookMap.space_general));
 
+=======
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
 // Create the Google OAuth client used by both the consent and Gmail send flow.
 const createOAuth2Client = () => {
   if (!gmailClientId || !gmailClientSecret) {
@@ -250,24 +336,36 @@ const sendGmailMessage = async ({ senderEmail, to, subject, message }) => {
   }
 };
 
+<<<<<<< HEAD
 // Send a message payload to a Google Chat webhook.
 const sendChatMessage = async (spaceId, payload) => {
+=======
+// Send a message to a Google Chat webhook without changing the existing integration behavior.
+const sendChatMessage = async (spaceId, text) => {
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
   const webhook = chatWebhookMap[spaceId];
   if (!webhook) {
     throw new Error(`No webhook configured for chat space ${spaceId}`);
   }
 
+<<<<<<< HEAD
   const requestBody = typeof payload === 'string' ? { text: payload } : payload;
 
   const bodyString = JSON.stringify(requestBody, null, 2);
   console.log('Google Chat webhook payload:', bodyString);
 
+=======
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
   const response = await fetch(webhook, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
+<<<<<<< HEAD
     body: bodyString
+=======
+    body: JSON.stringify({ text })
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
   });
 
   const bodyJson = await response.text();
@@ -278,11 +376,14 @@ const sendChatMessage = async (spaceId, payload) => {
   return { status: response.status, body: bodyJson };
 };
 
+<<<<<<< HEAD
 const notificationService = createNotificationService({
   sendGmailMessage,
   sendChatMessage
 });
 
+=======
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
 // Start the OAuth consent flow for the current user.
 app.get('/auth/google', (req, res) => {
   const returnTo = typeof req.query.returnTo === 'string' ? req.query.returnTo : defaultFrontendUrl;
@@ -345,7 +446,14 @@ app.get('/auth/google/callback', async (req, res) => {
     console.error('google callback error:', error);
     const redirectTarget = new URL(returnTo, defaultFrontendUrl);
     redirectTarget.searchParams.set('gmail', 'error');
+<<<<<<< HEAD
     redirectTarget.searchParams.set('gmailMessage', encodeURIComponent(error.message));
+=======
+    const message = /invalid_client/i.test(error.message)
+      ? 'Google OAuth client ID and client secret do not match. Copy both values from the same Web application OAuth client into Render, then redeploy.'
+      : error.message;
+    redirectTarget.searchParams.set('gmailMessage', encodeURIComponent(message));
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
     return res.redirect(redirectTarget.toString());
   }
 });
@@ -388,6 +496,7 @@ app.get('/api/updates', async (req, res) => {
 });
 
 app.post('/api/updates', async (req, res) => {
+<<<<<<< HEAD
   const { sendNotification = true, ...updatePayload } = req.body;
   if (!updatePayload) return res.status(400).json({ success: false, error: 'Update payload required.' });
 
@@ -407,12 +516,26 @@ app.post('/api/updates', async (req, res) => {
     }
 
     return res.json({ success: true, update: saved, notification: notificationResult });
+=======
+  const update = req.body;
+  if (!update) return res.status(400).json({ success: false, error: 'Update payload required.' });
+
+  try {
+    // ensure an id exists for upserts
+    if (!update.id) {
+      update.id = `up-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    }
+
+    const saved = await updatesStore.save(update);
+    return res.json({ success: true, update: saved });
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
   } catch (error) {
     console.error('save update error:', error);
     return res.status(500).json({ success: false, error: 'Unable to persist update.' });
   }
 });
 
+<<<<<<< HEAD
 app.delete('/api/updates', async (req, res) => {
   try {
     await updatesStore.clearAll();
@@ -423,6 +546,8 @@ app.delete('/api/updates', async (req, res) => {
   }
 });
 
+=======
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
 app.delete('/api/updates/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -490,6 +615,13 @@ app.get('/api/integrations/status', async (req, res) => {
     success: true,
     gmail: {
       oauthConfigured: Boolean(gmailClientId && gmailClientSecret),
+<<<<<<< HEAD
+=======
+      clientId: gmailClientId || null,
+      redirectUri,
+      clientSecretLength: gmailClientSecret.length,
+      clientSecretLooksValid: gmailClientSecret.startsWith('GOCSPX-'),
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
       connectedAccounts: connectedGmailAccounts
     },
     chat: {

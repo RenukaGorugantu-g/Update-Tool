@@ -13,6 +13,7 @@ interface IntegrationStatus {
   };
 }
 
+<<<<<<< HEAD
 const getApiBase = () => {
   const configuredBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '');
   if (configuredBase) {
@@ -24,6 +25,12 @@ const getApiBase = () => {
   }
 
   return '';
+=======
+const RENDER_API_BASE = 'https://update-tool.onrender.com';
+
+const getApiBase = () => {
+  return RENDER_API_BASE;
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
 };
 
 export const IntegrationHub: React.FC = () => {

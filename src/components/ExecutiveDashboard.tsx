@@ -52,6 +52,7 @@ export const ExecutiveDashboard: React.FC = () => {
 
   // Calculate Metrics
   const todayStr = new Date().toISOString().split('T')[0];
+<<<<<<< HEAD
   const sprintStart = new Date();
   sprintStart.setDate(sprintStart.getDate() - 13);
   const sprintUpdates = updates.filter(update => {
@@ -66,6 +67,16 @@ export const ExecutiveDashboard: React.FC = () => {
 
   // Filter Updates List
   const filteredUpdates = sprintUpdates.filter(update => {
+=======
+  const todayUpdates = updates.filter(u => u.date === todayStr);
+  const totalEmployees = users.filter(u => u.role === 'employee' && u.active);
+  const submittedCount = todayUpdates.length;
+  const pendingCount = Math.max(0, totalEmployees.length - submittedCount);
+  const activeBlockers = todayUpdates.filter(u => u.blockers.length > 0 && u.blockers[0].toLowerCase() !== 'none' && u.blockers[0].toLowerCase() !== 'none' && u.blockers[0].trim() !== '').length;
+
+  // Filter Updates List
+  const filteredUpdates = todayUpdates.filter(update => {
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
     const matchesSearch = update.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           update.projectName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPod = selectedPod === 'All' || update.pod === selectedPod;

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { usePulse } from '../context/PulseContext';
 import { Sparkles, LogIn, Lock, User, CheckCircle2, Eye, EyeOff, RotateCcw } from 'lucide-react';
 
+<<<<<<< HEAD
 const getApiBase = () => {
   const configuredBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '');
   if (configuredBase) {
@@ -17,6 +18,10 @@ const getApiBase = () => {
 
 export const Login: React.FC = () => {
   const { login, users, setUsers } = usePulse();
+=======
+export const Login: React.FC = () => {
+  const { login, users, resetPassword } = usePulse();
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
   const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -63,17 +68,27 @@ export const Login: React.FC = () => {
     }
 
     const targetUser = users.find(
+<<<<<<< HEAD
       user => user.email.toLowerCase() === resetIdentifier.trim().toLowerCase() || user.employeeId.toLowerCase() === resetIdentifier.trim().toLowerCase()
     );
 
     if (!targetUser) {
       setResetMsg('No matching account found. Please check your email or employee ID.');
+=======
+      user => user.active &&
+        (user.email.toLowerCase() === resetIdentifier.trim().toLowerCase() || user.employeeId.toLowerCase() === resetIdentifier.trim().toLowerCase())
+    );
+
+    if (!targetUser) {
+      setResetMsg('No active matching account found. Please check your email or employee ID.');
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
       return;
     }
 
     setResetting(true);
     setResetMsg('');
 
+<<<<<<< HEAD
     setTimeout(async () => {
       const updatedUsers = users.map(user => user.id === targetUser.id ? { ...user, password: newPassword } : user);
       setUsers(updatedUsers);
@@ -90,6 +105,17 @@ export const Login: React.FC = () => {
         }
       }
       setResetting(false);
+=======
+    setTimeout(() => {
+      const updated = resetPassword(resetIdentifier, newPassword);
+      setResetting(false);
+
+      if (!updated) {
+        setResetMsg('Password could not be updated. Please check the account and try again.');
+        return;
+      }
+
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
       setResetMsg('Password updated successfully. You can now sign in with your new password.');
       setResetIdentifier('');
       setNewPassword('');

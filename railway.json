@@ -1,8 +1,11 @@
 {
   "build": {
     "builder": "nixpacks"
+<<<<<<< HEAD
   },
   "deploy": {
     "startCommand": "cd server && npm start"
+=======
+>>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
   }
 }
