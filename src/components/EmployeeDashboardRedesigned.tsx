@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { usePulse } from '../context/PulseContext';
-import { AlertTriangle, CheckCircle2, Mic, Paperclip, Send, Sparkles, Volume2, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Mic, Paperclip, Send, Volume2, X } from 'lucide-react';
 
 export const EmployeeDashboard: React.FC = () => {
   const {

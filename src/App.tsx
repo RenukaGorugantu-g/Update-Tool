@@ -1,4 +1,3 @@
-import React from 'react';
 import { useState, useEffect } from 'react';
 import { usePulse } from './context/PulseContext';
 import { Sidebar } from './components/Sidebar';
@@ -42,7 +41,7 @@ function App() {
     setNotifications,
     logout
   } = usePulse();
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [, setShowOnboarding] = useState(false);
   
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showNotifications, setShowNotifications] = useState(false);

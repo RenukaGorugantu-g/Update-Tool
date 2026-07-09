@@ -7,7 +7,7 @@ import { PulseProvider } from './context/PulseContext.tsx'
 // errors inside the app render a visible message instead of a blank page.
 const rootEl = document.getElementById('root')!;
 
-class ErrorBoundary extends (React as any).Component<any, { error: Error | null }> {
+class ErrorBoundary extends React.Component<any, { error: Error | null }> {
   constructor(props: any) {
     super(props);
     this.state = { error: null };

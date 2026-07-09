@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePulse } from '../context/PulseContext';
-import { Sparkles, Lock, CheckCircle2, Eye, EyeOff, RotateCcw, LogIn } from 'lucide-react';
+import { Sparkles, Lock, CheckCircle2, Eye, EyeOff, LogIn } from 'lucide-react';
 
 const getApiBase = () => {
   const configuredBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '');
@@ -26,10 +26,10 @@ export const Login: React.FC = () => {
   const [resetIdentifier, setResetIdentifier] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [showConfirmResetPassword, setShowConfirmResetPassword] = useState(false);
+  const [showResetPassword] = useState(false);
+  const [showConfirmResetPassword] = useState(false);
   const [resetMsg, setResetMsg] = useState('');
-  const [resetting, setResetting] = useState(false);
+  const [, setResetting] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

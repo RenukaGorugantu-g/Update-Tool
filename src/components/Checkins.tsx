@@ -3,7 +3,7 @@ import { usePulse } from '../context/PulseContext';
 import { Plus, ChevronLeft } from 'lucide-react';
 
 const Checkins: React.FC = () => {
-  const { currentUser, submitEmployeeUpdate, notifications, setNotifications, users, updates } = usePulse();
+  const { currentUser, submitEmployeeUpdate, setNotifications, users, updates } = usePulse();
   const [isFilling, setIsFilling] = useState(false);
   const [step, setStep] = useState(1);
   const [completedText, setCompletedText] = useState('');

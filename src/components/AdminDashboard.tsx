@@ -3,7 +3,7 @@ import { usePulse } from '../context/PulseContext';
 import { Plus, UserMinus, UserCheck, ShieldAlert, FileSpreadsheet, RefreshCw } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
-  const { users, createNewUser, toggleUserActiveStatus, resetSprintData } = usePulse();
+  const { users, createNewUser, toggleUserActiveStatus, resetSprintData, updates } = usePulse();
 
   // Create User Form State
   const [name, setName] = useState('');
