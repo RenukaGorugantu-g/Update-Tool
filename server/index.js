@@ -130,16 +130,30 @@ const oauthScopes = [
   'profile'
 ];
 
-const chatWebhookMap = {
-  space_development: process.env.CHAT_WEBHOOK_SPACE_DEVELOPMENT,
-  space_design: process.env.CHAT_WEBHOOK_SPACE_DESIGN,
-  space_marketing: process.env.CHAT_WEBHOOK_SPACE_MARKETING,
-  space_sales: process.env.CHAT_WEBHOOK_SPACE_SALES,
-  space_client_success: process.env.CHAT_WEBHOOK_SPACE_CLIENT_SUCCESS,
-  space_general: process.env.CHAT_WEBHOOK_SPACE_GENERAL
-};
+const EXPECTED_CHAT_SPACES = [
+  'space_development',
+  'space_design',
+  'space_marketing',
+  'space_sales',
+  'space_client_success',
+  'space_general'
+];
 
-console.log('Google Chat webhook configured:', Boolean(chatWebhookMap.space_general));
+const chatWebhookMap = Object.keys(process.env)
+  .filter((key) => key.startsWith('CHAT_WEBHOOK_SPACE_'))
+  .reduce((map, key) => {
+    const suffix = key.slice('CHAT_WEBHOOK_SPACE_'.length).toLowerCase();
+    const webhookKey = `space_${suffix}`;
+    return {
+      ...map,
+      [webhookKey]: process.env[key]
+    };
+  }, {});
+
+const configuredChatSpaces = Object.keys(chatWebhookMap).filter((spaceId) => Boolean(chatWebhookMap[spaceId]));
+const configuredGeneralWebhook = chatWebhookMap.space_general || configuredChatSpaces.length > 0 ? chatWebhookMap[configuredChatSpaces[0]] : undefined;
+
+console.log('Google Chat configured spaces:', configuredChatSpaces);
 
 // Create the Google OAuth client used by both the consent and Gmail send flow.
 const createOAuth2Client = () => {
@@ -260,7 +274,14 @@ const sendGmailMessage = async ({ senderEmail, to, subject, message }) => {
 
 // Send a message payload to a Google Chat webhook.
 const sendChatMessage = async (spaceId, payload) => {
-  const webhook = chatWebhookMap[spaceId];
+  // const webhook = chatWebhookMap[spaceId];
+  // if (!webhook) {
+  //   throw new Error(`No webhook configured for chat space ${spaceId}`);
+  // }
+   const webhook =
+    chatWebhookMap[spaceId] ||
+    chatWebhookMap.space_mels;
+
   if (!webhook) {
     throw new Error(`No webhook configured for chat space ${spaceId}`);
   }

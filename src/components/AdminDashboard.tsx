@@ -125,6 +125,39 @@ export const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Last-created credentials & debug users (dev only) */}
+      {lastCreatedCredentials && (
+        <div className="glass-card" style={{ padding: '14px', marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Last created user</div>
+            <div style={{ fontWeight: 800, marginTop: 6 }}>{lastCreatedCredentials.email}</div>
+            <div style={{ color: 'var(--text-secondary)', marginTop: 4 }}>Password: <span style={{ fontFamily: 'monospace' }}>{lastCreatedCredentials.password}</span></div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn" onClick={() => { navigator.clipboard?.writeText(lastCreatedCredentials.email + '\n' + lastCreatedCredentials.password); }}>Copy creds</button>
+            <button className="btn btn-secondary" onClick={() => { setLastCreatedCredentials(null); }}>Dismiss</button>
+          </div>
+        </div>
+      )}
+
+      <details style={{ marginBottom: 18 }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Dev: View stored users</summary>
+        <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+          {users.map(u => (
+            <div key={u.id} className="glass-card" style={{ padding: 10, display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <div style={{ fontWeight: 700 }}>{u.name} <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>({u.role})</span></div>
+                <div style={{ color: 'var(--text-secondary)' }}>{u.email} • {u.employeeId}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{u.password}</div>
+                <div style={{ color: u.active ? 'var(--accent-emerald)' : 'var(--text-muted)', marginTop: 6 }}>{u.active ? 'Active' : 'Disabled'}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </details>
+
       <div className="dashboard-grid">
         
         {/* Creation Form Card */}

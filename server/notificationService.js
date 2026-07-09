@@ -1,11 +1,15 @@
-const getChatSpaceId = (department = '') => {
-  const dept = String(department || '').toLowerCase();
-  if (dept.includes('development') || dept.includes('developer')) return 'space_development';
-  if (dept.includes('design')) return 'space_design';
-  if (dept.includes('marketing')) return 'space_marketing';
-  if (dept.includes('sales')) return 'space_sales';
-  if (dept.includes('success') || dept.includes('client')) return 'space_client_success';
-  return 'space_general';
+// const getChatSpaceId = (department = '') => {
+//   const dept = String(department || '').toLowerCase();
+//   if (dept.includes('development') || dept.includes('developer')) return 'space_development';
+//   if (dept.includes('design')) return 'space_design';
+//   if (dept.includes('marketing')) return 'space_marketing';
+//   if (dept.includes('sales')) return 'space_sales';
+//   if (dept.includes('success') || dept.includes('client')) return 'space_client_success';
+//   return 'space_general';
+// };
+
+const getChatSpaceId = () => {
+  return 'space_mels';
 };
 
 const getListText = (items = []) => {
