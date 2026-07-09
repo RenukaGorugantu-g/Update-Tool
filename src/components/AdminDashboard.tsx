@@ -1,16 +1,9 @@
 import React, { useState } from 'react';
 import { usePulse } from '../context/PulseContext';
-<<<<<<< HEAD
 import { Plus, UserMinus, UserCheck, ShieldAlert, FileSpreadsheet, RefreshCw } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
   const { users, createNewUser, toggleUserActiveStatus, resetSprintData } = usePulse();
-=======
-import { Plus, UserMinus, UserCheck, ShieldAlert, FileSpreadsheet } from 'lucide-react';
-
-export const AdminDashboard: React.FC = () => {
-  const { users, createNewUser, toggleUserActiveStatus } = usePulse();
->>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
 
   // Create User Form State
   const [name, setName] = useState('');
@@ -24,11 +17,8 @@ export const AdminDashboard: React.FC = () => {
   const [generatedEmpId, setGeneratedEmpId] = useState('');
   const [tempPassword, setTempPassword] = useState('');
   const [formSuccess, setFormSuccess] = useState(false);
-<<<<<<< HEAD
   const [isResetting, setIsResetting] = useState(false);
-=======
   const [lastCreatedCredentials, setLastCreatedCredentials] = useState<{ email: string; employeeId: string; password: string } | null>(null);
->>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
 
   // Filter list
   const executives = users.filter(u => u.role === 'executive' || u.role === 'admin');
@@ -48,14 +38,11 @@ export const AdminDashboard: React.FC = () => {
       password: tempPassword
     });
 
-<<<<<<< HEAD
-=======
     setLastCreatedCredentials({
       email: email.trim().toLowerCase(),
       employeeId: generatedEmpId.trim(),
       password: tempPassword
     });
->>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
     setFormSuccess(true);
     setName('');
     setEmail('');
@@ -67,7 +54,6 @@ export const AdminDashboard: React.FC = () => {
     }, 4500);
   };
 
-<<<<<<< HEAD
   const handleResetSprintData = async () => {
     if (!window.confirm('Clear all sprint updates and start a fresh sprint?')) return;
     setIsResetting(true);
@@ -75,8 +61,6 @@ export const AdminDashboard: React.FC = () => {
     setIsResetting(false);
   };
 
-=======
->>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
   return (
     <div className="fade-in" style={{ padding: '8px 0' }}>
       
@@ -223,18 +207,12 @@ export const AdminDashboard: React.FC = () => {
                 fontSize: '0.8rem',
                 color: 'var(--accent-emerald)',
                 fontWeight: 700,
-<<<<<<< HEAD
                 textAlign: 'center',
-=======
->>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
                 background: 'var(--accent-emerald-light)',
                 padding: '8px',
                 borderRadius: '8px'
               }}>
-<<<<<<< HEAD
-                Account created and synchronized to organizational charts.
-=======
-                <div>Account created and synchronized.</div>
+                <div>Account created and synchronized to organizational charts.</div>
                 {lastCreatedCredentials && (
                   <div style={{ marginTop: '6px', color: 'var(--text-primary)', fontWeight: 600, lineHeight: 1.5 }}>
                     <div>Email: {lastCreatedCredentials.email}</div>
@@ -242,7 +220,6 @@ export const AdminDashboard: React.FC = () => {
                     <div>Password: {lastCreatedCredentials.password}</div>
                   </div>
                 )}
->>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
               </div>
             )}
 
@@ -259,14 +236,10 @@ export const AdminDashboard: React.FC = () => {
               <FileSpreadsheet size={18} style={{ color: 'var(--accent-primary)' }} />
               <span>Company Directory ({users.length} profiles)</span>
             </h3>
-<<<<<<< HEAD
             <button type="button" className="btn btn-secondary" onClick={handleResetSprintData} disabled={isResetting} style={{ padding: '8px 12px', fontSize: '0.75rem' }}>
               <RefreshCw size={14} style={{ marginRight: '6px' }} />
               {isResetting ? 'Resetting…' : 'Reset sprint data'}
             </button>
-=======
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>Active: {users.filter(u => u.active).length}</span>
->>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
           </div>
 
           <div style={{ overflowY: 'auto', maxHeight: '420px', paddingRight: '4px' }}>
