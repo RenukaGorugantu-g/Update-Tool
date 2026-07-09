@@ -45,7 +45,16 @@ export const Login: React.FC = () => {
       const success = login(loginInput, password);
       setLoading(false);
       if (!success) {
-        setErrorMsg('Invalid credentials or account is deactivated. Please try again.');
+        // Provide detailed error message with demo account info
+        const demoAccounts = users
+          .filter(u => u.active)
+          .slice(0, 2)
+          .map(u => `${u.email}`)
+          .join(', ');
+        
+        setErrorMsg(
+          `Invalid credentials. Try demo accounts: ${demoAccounts || 'Check admin panel'}. All passwords end with current year (e.g., @Pulse2026!)`
+        );
       }
     }, 800);
   };

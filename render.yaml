@@ -3,11 +3,13 @@ services:
     name: update-tool-backend
     env: node
     plan: free
-    buildCommand: npm install && npm install --prefix server
+    buildCommand: npm install --prefix server
     startCommand: cd server && npm start
     envVars:
       - key: NODE_VERSION
         value: 24
+      - key: PORT
+        value: 5000
       - key: FRONTEND_URL
         sync: false
       - key: GOOGLE_CLIENT_ID
@@ -15,6 +17,7 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: GOOGLE_REDIRECT_URI
+        value: https://update-tool.onrender.com/auth/google/callback
         sync: false
       - key: CHAT_WEBHOOK_SPACE_DEVELOPMENT
         sync: false

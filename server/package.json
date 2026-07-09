@@ -1,7 +1,11 @@
 {
   "name": "updates-tool-backend",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "node --watch index.js index.js",
     "start": "node index.js",
