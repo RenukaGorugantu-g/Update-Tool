@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { usePulse } from './context/PulseContext';
 import { Sidebar } from './components/Sidebar';
@@ -7,7 +8,9 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { OrgChart } from './components/OrgChart';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { IntegrationHub } from './components/IntegrationHub';
+import Checkins from './components/Checkins';
 import { Login } from './components/Login';
+import { DailyLanding } from './components/Dailybot/DailyLanding';
 import { WorkspaceHub } from './components/WorkspaceHub';
 
 import { 
@@ -17,6 +20,7 @@ import {
   Info,
   CheckCircle2
 } from 'lucide-react';
+import LandingPage from './components/LandingPage';
 
 const getApiBase = () => {
   const configuredBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '');
@@ -38,6 +42,7 @@ function App() {
     setNotifications,
     logout
   } = usePulse();
+  const [showOnboarding, setShowOnboarding] = useState(false);
   
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showNotifications, setShowNotifications] = useState(false);
@@ -113,6 +118,53 @@ function App() {
     }
   }, [currentUser, activeTab]);
 
+  // Disable multi-step onboarding: mark as seen immediately so modal never appears
+  useEffect(() => {
+    if (!currentUser) return;
+    try {
+      const key = `pulse-seen-onboarding-${currentUser.id}`;
+      localStorage.setItem(key, '1');
+      setShowOnboarding(false);
+    } catch (err) {
+      // ignore storage errors
+    }
+  }, [currentUser]);
+
+  // Listen for external rerun onboarding requests
+  useEffect(() => {
+    // keep listener but default behavior will now immediately mark onboarding seen
+    const handler = () => setShowOnboarding(false);
+    window.addEventListener('pulse:rerun-onboarding', handler as EventListener);
+    return () => window.removeEventListener('pulse:rerun-onboarding', handler as EventListener);
+  }, []);
+
+  // Listen for onboarding-driven navigation events
+  useEffect(() => {
+    const navHandler = (e: Event) => {
+      try {
+        const ev = e as CustomEvent<string>;
+        if (ev.detail) setActiveTab(ev.detail as string);
+      } catch (err) {
+        // ignore
+      }
+    };
+    window.addEventListener('pulse:setActiveTab', navHandler as EventListener);
+    return () => window.removeEventListener('pulse:setActiveTab', navHandler as EventListener);
+  }, []);
+
+  // Fallback: hide onboarding when requested by modal
+  useEffect(() => {
+    const hideHandler = () => {
+      setShowOnboarding(false);
+      setActiveTab('dashboard');
+      try {
+        if (currentUser) localStorage.setItem(`pulse-seen-onboarding-${currentUser.id}`, '1');
+      } catch (err) {}
+    };
+    window.addEventListener('pulse:hideOnboarding', hideHandler as EventListener);
+    return () => window.removeEventListener('pulse:hideOnboarding', hideHandler as EventListener);
+  }, [currentUser]);
+
   useEffect(() => {
     if (!currentUser?.email) {
       setGmailConnectionState('not-connected');
@@ -166,6 +218,8 @@ function App() {
         if (currentUser.role === 'admin') return <AdminDashboard />;
         if (currentUser.role === 'executive') return <ExecutiveDashboard />;
         return <EmployeeDashboard />;
+      case 'checkins':
+        return <Checkins />;
       case 'org':
         return <OrgChart />;
       case 'analytics':
@@ -182,6 +236,10 @@ function App() {
   };
 
   if (!currentUser) {
+    // Public routes: root shows landing, /daily shows Daily preview
+    const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+    if (path.startsWith('/daily')) return <DailyLanding />;
+    if (path === '/' || path === '/home' || path === '/landing') return <LandingPage />;
     return <Login />;
   }
 
@@ -378,26 +436,28 @@ function App() {
                         </span>
                       )}
                     </div>
-
-                    <button
-                      onClick={() => {
-                        setShowUserDropdown(false);
-                        logout();
-                      }}
-                      className="btn"
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        fontSize: '0.8rem',
-                        color: 'var(--accent-primary)',
-                        background: 'rgba(221, 36, 118, 0.05)',
-                        border: '1px solid rgba(221, 36, 118, 0.1)',
-                        justifyContent: 'center',
-                        borderRadius: '20px'
-                      }}
-                    >
-                      Log Out
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => {
+                          setShowUserDropdown(false);
+                          window.dispatchEvent(new CustomEvent('pulse:rerun-onboarding'));
+                        }}
+                        className="btn btn-secondary"
+                        style={{ flex: 1, padding: '8px 12px', fontSize: '0.8rem', borderRadius: '12px' }}
+                      >
+                        Run Tour
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowUserDropdown(false);
+                          logout();
+                        }}
+                        className="btn"
+                        style={{ flex: 1, padding: '8px 12px', fontSize: '0.8rem', color: 'var(--accent-primary)', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16,185,129,0.08)', justifyContent: 'center', borderRadius: '12px' }}
+                      >
+                        Log Out
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -503,6 +563,7 @@ function App() {
           {renderActiveView()}
         </div>
       </main>
+      {/* Onboarding modal disabled: onboarding is marked seen on login */}
     </div>
   );
 }

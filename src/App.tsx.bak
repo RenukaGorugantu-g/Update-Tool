@@ -1,0 +1,9 @@
+import React from 'react';
+import { useState, useEffect } from 'react';
+import { usePulse } from './context/PulseContext';
+import { Sidebar } from './components/Sidebar';
+import { EmployeeDashboard } from './components/EmployeeDashboardRedesigned';
+import { ExecutiveDashboard } from './components/ExecutiveDashboard';
+import { AdminDashboard } from './components/AdminDashboard';
+import { OrgChart } from './components/OrgChart';
+import { AnalyticsDashboard } from './components/AnalyticsDashboard';

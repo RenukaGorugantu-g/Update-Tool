@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePulse } from '../context/PulseContext';
-import { Sparkles, LogIn, Lock, User, CheckCircle2, Eye, EyeOff, RotateCcw } from 'lucide-react';
+import { Sparkles, Lock, CheckCircle2, Eye, EyeOff, RotateCcw, LogIn } from 'lucide-react';
 
 const getApiBase = () => {
   const configuredBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '');
@@ -115,309 +115,186 @@ export const Login: React.FC = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'var(--bg-primary)',
+      background: 'radial-gradient(circle at top left, rgba(16, 185, 129, 0.12), transparent 28%), radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.1), transparent 34%), var(--bg-primary)',
       padding: '24px',
       position: 'relative',
       overflow: 'hidden'
     }}>
       <div style={{
         position: 'absolute',
-        width: '500px',
-        height: '500px',
-        background: 'radial-gradient(circle, rgba(221, 36, 118, 0.08) 0%, rgba(0,0,0,0) 70%)',
-        top: '-10%',
-        left: '-10%',
+        width: '420px',
+        height: '420px',
+        background: 'radial-gradient(circle, rgba(16, 185, 129, 0.14) 0%, rgba(255,255,255,0) 65%)',
+        top: '-8%',
+        left: '-6%',
         zIndex: 1,
         pointerEvents: 'none'
       }}></div>
       <div style={{
         position: 'absolute',
-        width: '600px',
-        height: '600px',
-        background: 'radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(0,0,0,0) 70%)',
-        bottom: '-15%',
-        right: '-10%',
+        width: '340px',
+        height: '340px',
+        background: 'radial-gradient(circle, rgba(59, 130, 246, 0.14) 0%, rgba(255,255,255,0) 72%)',
+        bottom: '-12%',
+        right: '-6%',
         zIndex: 1,
         pointerEvents: 'none'
       }}></div>
 
       <div style={{
         width: '100%',
-        maxWidth: '920px',
+        maxWidth: '980px',
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+        gridTemplateColumns: '1.1fr 0.9fr',
         gap: '32px',
         zIndex: 2,
         alignItems: 'center'
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{
-              width: '46px',
-              height: '46px',
-              borderRadius: '12px',
-              background: 'var(--gradient-brand)',
+              width: '48px',
+              height: '48px',
+              borderRadius: '16px',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: 'white',
-              boxShadow: '0 8px 20px rgba(221, 36, 118, 0.3)'
+              boxShadow: '0 20px 48px rgba(16, 185, 129, 0.18)'
             }}>
               <Sparkles size={24} />
             </div>
             <div>
-              <h1 style={{
-                fontSize: '2rem',
-                fontWeight: 900,
-                letterSpacing: '-0.03em',
-                background: 'var(--gradient-brand)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                lineHeight: 1
-              }}>
+              <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--accent-primary)' }}>
                 Maple Pulse
+              </p>
+              <h1 style={{ margin: '10px 0 0', fontSize: '2.2rem', lineHeight: 1.05, fontWeight: 900 }}>
+                Login to your team status dashboard
               </h1>
-              <span style={{
-                fontSize: '0.8rem',
-                color: 'var(--accent-indigo)',
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em'
-              }}>
-                Employee Update Intelligence
-              </span>
             </div>
           </div>
 
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, lineHeight: '1.3' }}>
-            The Central Nervous System for High-Performing Organizations.
-          </h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-            Collect daily status updates, transcribe vocal progress reports using AI, and empower executives with instant analytical insights.
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-              <div style={{ color: 'var(--accent-emerald)', marginTop: '2px' }}><CheckCircle2 size={16} /></div>
-              <div>
-                <strong style={{ fontSize: '0.85rem' }}>AI Vocal Transcriptions</strong>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Employees dictate updates; AI categorizes accomplishments, plans, & blockers.</p>
+          <div style={{ maxWidth: '560px', display: 'grid', gap: '16px' }}>
+            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+              Fast sign-in for managers and contributors, with secure access to updates and a polished dashboard experience. Comments continue to route through Google Chat exactly as before.
+            </p>
+            <div style={{ display: 'grid', gap: '12px', padding: '20px 22px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.16)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <CheckCircle2 size={18} color='var(--accent-primary)' />
+                <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>Auto-save updates locally and sync them securely.</span>
               </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-              <div style={{ color: 'var(--accent-indigo)', marginTop: '2px' }}><CheckCircle2 size={16} /></div>
-              <div>
-                <strong style={{ fontSize: '0.85rem' }}>Automated Comments & Escalations</strong>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Direct manager follow-ups pushed straight to Google Chat spaces and Gmail APIs.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Lock size={18} color='var(--accent-secondary)' />
+                <span style={{ color: 'var(--text-secondary)' }}>Passwords stay in your session and demo accounts are ready to try.</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="glass-card" style={{
-          padding: '36px',
-          border: '1px solid var(--glass-border)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '24px',
-          background: 'var(--glass-bg)',
-          backdropFilter: 'blur(12px)',
-          borderRadius: 'var(--border-radius-lg)'
-        }}>
-          <div>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: '6px' }}>
-              Welcome Back
-            </h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Sign in with your work email or employee ID.
-            </p>
-          </div>
-
-          {errorMsg && (
-            <div style={{
-              background: 'rgba(239, 68, 68, 0.08)',
-              border: '1px solid rgba(239, 68, 68, 0.2)',
-              color: '#ef4444',
-              padding: '10px 14px',
-              borderRadius: '8px',
-              fontSize: '0.8rem',
-              fontWeight: 600
-            }}>
-              {errorMsg}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div className="glass-card" style={{ padding: '34px 32px', border: '1px solid var(--glass-border)', maxWidth: '460px' }}>
+          <div style={{ display: 'grid', gap: '18px' }}>
             <div>
-              <label htmlFor="login-input" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Email Address / Employee ID</label>
-              <div style={{ position: 'relative' }}>
-                <User size={16} style={{ position: 'absolute', left: '12px', top: '13px', color: 'var(--text-muted)' }} />
+              <h2 style={{ fontSize: '1.35rem', margin: 0, fontWeight: 800 }}>Sign in</h2>
+              <p style={{ marginTop: '6px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Use your email or employee ID to continue.</p>
+            </div>
+
+            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '16px' }}>
+              <label style={{ display: 'grid', gap: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                Email or employee ID
                 <input
-                  id="login-input"
                   type="text"
-                  placeholder="e.g. sandeep@maplelearningsolutions.com or MP-0001"
                   value={loginInput}
-                  onChange={(e) => setLoginInput(e.target.value)}
-                  style={{ paddingLeft: '38px' }}
-                  required
+                  onChange={(event) => setLoginInput(event.target.value)}
+                  placeholder="name@company.com or EMP123"
+                  style={{ width: '100%', padding: '14px 16px', borderRadius: '16px', border: '1px solid var(--glass-border)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', outline: 'none' }}
                 />
-              </div>
-            </div>
+              </label>
 
-            <div>
-              <label htmlFor="password-input" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Password</label>
-              <div style={{ position: 'relative' }}>
-                <Lock size={16} style={{ position: 'absolute', left: '12px', top: '13px', color: 'var(--text-muted)' }} />
-                <input
-                  id="password-input"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={{ paddingLeft: '38px', paddingRight: '42px' }}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(prev => !prev)}
-                  style={{ position: 'absolute', right: '10px', top: '10px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
+              <label style={{ display: 'grid', gap: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                Password
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '16px', background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '0 12px' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Enter password"
+                    style={{ width: '100%', padding: '14px 0', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text-primary)' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </label>
 
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '12px',
-                fontSize: '0.9rem',
-                justifyContent: 'center',
-                marginTop: '6px'
-              }}
-            >
-              {loading ? (
-                <div style={{
-                  width: '18px',
-                  height: '18px',
-                  border: '3px solid white',
-                  borderTopColor: 'transparent',
-                  borderRadius: '50%',
-                  animation: 'spin 0.8s linear infinite'
-                }}></div>
-              ) : (
-                <>
-                  <LogIn size={16} />
-                  <span>Authenticate Session</span>
-                </>
+              {errorMsg && (
+                <div style={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: '0.9rem' }}>{errorMsg}</div>
               )}
-            </button>
-          </form>
 
-          <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '20px', marginTop: '8px' }}>
-            <button
-              type="button"
-              onClick={() => {
-                setShowResetPanel(prev => !prev);
-                setResetIdentifier(loginInput);
-                setResetMsg('');
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--accent-primary)',
-                fontWeight: 700,
-                cursor: 'pointer',
-                padding: 0,
-                fontSize: '0.8rem'
-              }}
-            >
-              <RotateCcw size={14} />
-              <span>Reset password</span>
-            </button>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                <LogIn size={16} />
+                {loading ? 'Signing in…' : 'Continue'
+                }
+              </button>
+            </form>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <button type="button" onClick={() => setShowResetPanel((prev) => !prev)} className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center', padding: '12px 14px' }}>
+                {showResetPanel ? 'Close reset' : 'Forgot password'}
+              </button>
+              <button type="button" className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center', padding: '12px 14px' }}>
+                Demo login
+              </button>
+            </div>
 
             {showResetPanel && (
-              <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                <div>
-                  <label htmlFor="reset-identifier" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Email Address / Employee ID</label>
+              <div style={{ display: 'grid', gap: '14px', padding: '18px', background: 'var(--bg-primary)', borderRadius: '18px', border: '1px solid var(--glass-border)' }}>
+                <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)' }}>Reset your password with your email or employee ID.</p>
+                <label style={{ display: 'grid', gap: '8px', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+                  Email or ID
                   <input
-                    id="reset-identifier"
                     type="text"
                     value={resetIdentifier}
-                    onChange={(e) => setResetIdentifier(e.target.value)}
-                    placeholder="Enter work email or employee ID"
+                    onChange={(event) => setResetIdentifier(event.target.value)}
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: '14px', border: '1px solid var(--glass-border)', background: 'var(--bg-tertiary)' }}
                   />
-                </div>
-                <div>
-                  <label htmlFor="new-password" style={{ fontSize: '0.75rem', fontWeight: 700 }}>New Password</label>
-                  <div style={{ position: 'relative' }}>
-                    <Lock size={16} style={{ position: 'absolute', left: '12px', top: '13px', color: 'var(--text-muted)' }} />
-                    <input
-                      id="new-password"
-                      type={showResetPassword ? 'text' : 'password'}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Choose a new password"
-                      style={{ paddingLeft: '38px', paddingRight: '42px' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowResetPassword(prev => !prev)}
-                      style={{ position: 'absolute', right: '10px', top: '10px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                      aria-label={showResetPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showResetPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label htmlFor="confirm-password" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Confirm Password</label>
-                  <div style={{ position: 'relative' }}>
-                    <Lock size={16} style={{ position: 'absolute', left: '12px', top: '13px', color: 'var(--text-muted)' }} />
-                    <input
-                      id="confirm-password"
-                      type={showConfirmResetPassword ? 'text' : 'password'}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm your new password"
-                      style={{ paddingLeft: '38px', paddingRight: '42px' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmResetPassword(prev => !prev)}
-                      style={{ position: 'absolute', right: '10px', top: '10px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                      aria-label={showConfirmResetPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showConfirmResetPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-                {resetMsg && (
-                  <div style={{ fontSize: '0.75rem', color: resetMsg.includes('successfully') ? 'var(--accent-emerald)' : 'var(--accent-amber)' }}>
-                    {resetMsg}
-                  </div>
-                )}
-                <button type="submit" className="btn btn-secondary" disabled={resetting} style={{ justifyContent: 'center' }}>
-                  {resetting ? 'Updating...' : 'Save New Password'}
+                </label>
+                <label style={{ display: 'grid', gap: '8px', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+                  New password
+                  <input
+                    type={showResetPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: '14px', border: '1px solid var(--glass-border)', background: 'var(--bg-tertiary)' }}
+                  />
+                </label>
+                <label style={{ display: 'grid', gap: '8px', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+                  Confirm password
+                  <input
+                    type={showConfirmResetPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: '14px', border: '1px solid var(--glass-border)', background: 'var(--bg-tertiary)' }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={handleResetPassword}
+                  className="btn btn-primary"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  Reset password
                 </button>
-              </form>
+                {resetMsg && <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.88rem' }}>{resetMsg}</p>}
+              </div>
             )}
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 };

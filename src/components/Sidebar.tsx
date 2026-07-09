@@ -26,6 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     const role = currentUser.role;
     const items = [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'executive', 'employee'] },
+      { id: 'checkins', label: 'Check-ins', icon: Activity, roles: ['admin', 'executive', 'employee'] },
       { id: 'communications', label: 'Mail & Chat Clients', icon: MessageSquare, roles: ['admin', 'executive', 'employee'] },
       { id: 'org', label: 'Team Structure', icon: Users, roles: ['admin', 'executive', 'employee'] }
     ];
@@ -49,17 +50,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
   const menuItems = getMenuItems();
 
   return (
-    <aside className="glass-card" style={{
+    <aside className="glass-card sidebar-condensed" style={{
       width: 'var(--sidebar-width)',
       height: 'calc(100vh - 32px)',
       margin: '16px 0 16px 16px',
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'space-between',
-      padding: '24px 16px',
+      padding: '14px 12px',
       position: 'sticky',
       top: '16px',
-      zIndex: 10
+      zIndex: 10,
+      background: 'var(--sidebar-bg)'
     }}>
       <div>
         {/* Brand Header */}

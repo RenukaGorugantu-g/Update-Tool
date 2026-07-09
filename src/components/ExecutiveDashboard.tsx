@@ -64,6 +64,11 @@ export const ExecutiveDashboard: React.FC = () => {
   const pendingCount = Math.max(0, totalEmployees.length - submittedCount);
   const activeBlockers = sprintUpdates.filter(u => u.blockers.length > 0 && u.blockers[0].toLowerCase() !== 'none' && u.blockers[0].toLowerCase() !== 'none' && u.blockers[0].trim() !== '').length;
 
+  // Summary numbers for top badges
+  const submittedToday = updates.filter(u => u.date === todayStr).length;
+  const totalEmployeesActive = users.filter(u => u.role === 'employee' && u.active).length || 1;
+  const completionPct = Math.round((submittedToday / totalEmployeesActive) * 100);
+
   // Filter Updates List
   const filteredUpdates = sprintUpdates.filter(update => {
     const matchesSearch = update.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -188,7 +193,7 @@ export const ExecutiveDashboard: React.FC = () => {
             Executive Workspace
           </h2>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-            Logged in: <strong>{currentUser.name}</strong> ({currentUser.email}). Monitor work status and push approvals.
+            Logged in: <strong>{currentUser.name}</strong> ({currentUser.email}). Monitor work status and push approvals. Comments can be routed through Gmail and Google Chat as part of the executive review flow.
           </p>
         </div>
 
@@ -202,7 +207,56 @@ export const ExecutiveDashboard: React.FC = () => {
         </button>
       </div>
 
+      {/* Landing-style summary badges */}
+      <div className="summary-row">
+        <div className="summary-badge">
+          <div className={`summary-circle pct`} style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>{completionPct}%</div>
+          <div>
+            <div className="summary-text">{submittedToday} responses</div>
+            <div className="summary-sub">of {totalEmployeesActive} expected</div>
+          </div>
+        </div>
+
+        <div className="summary-badge">
+          <div className="summary-circle alert" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)' }}>🔥</div>
+          <div>
+            <div className="summary-text">{activeBlockers} blocker{activeBlockers !== 1 ? 's' : ''}</div>
+            <div className="summary-sub">attention points</div>
+          </div>
+        </div>
+
+        <div className="summary-badge">
+          <div className="summary-circle" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }}>🕒</div>
+          <div>
+            <div className="summary-text">{Math.max(0, totalEmployeesActive - submittedToday)} pending</div>
+            <div className="summary-sub">responses</div>
+          </div>
+        </div>
+      </div>
+
       {/* Metric Cards Row */}
+      <div className="metrics-row">
+        <div className="glass-card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', gridColumn: 'span 3' }}>
+          <div style={{
+            width: '46px',
+            height: '46px',
+            borderRadius: '12px',
+            background: 'var(--gradient-indigo)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)'
+          }}>
+            <Mail size={22} />
+          </div>
+          <div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Channel Delivery</span>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginTop: '4px' }}>Gmail + Google Chat ready</h3>
+            <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)' }}>Comments and follow-ups will continue delivering through configured Gmail and Chat streams.</p>
+          </div>
+        </div>
+      </div>
       <div className="metrics-row">
         <div className="glass-card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{

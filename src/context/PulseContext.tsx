@@ -125,6 +125,13 @@ interface PulseContextType {
   mockChatMessages: MockChatMessage[];
   setMockChatMessages: React.Dispatch<React.SetStateAction<MockChatMessage[]>>;
   sendDirectChatMessage: (spaceId: string, text: string) => void;
+  templates: string[];
+  setTemplates: React.Dispatch<React.SetStateAction<string[]>>;
+  reminders: any[];
+  setReminders: React.Dispatch<React.SetStateAction<any[]>>;
+  persistTemplates: (nextTemplates: string[]) => Promise<string[] | null>;
+  persistReminders: (nextReminders: any[]) => Promise<any[] | null>;
+  trackEvent: (name: string, payload?: any) => void;
 }
 
 // --- Seed Data (Admin + Executives only, No Fake Data for Employees/Updates) ---
@@ -257,6 +264,16 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return saved ? JSON.parse(saved) : initialMockChatMessages;
   });
 
+  const [templates, setTemplates] = useState<string[]>(() => {
+    const saved = localStorage.getItem('pulse-templates');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [reminders, setReminders] = useState<any[]>(() => {
+    const saved = localStorage.getItem('pulse-reminders');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [isVoiceLoading, setIsVoiceLoading] = useState(false);
 
   // Sync to localStorage
@@ -295,6 +312,14 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem('pulse-mock-chat-messages', JSON.stringify(mockChatMessages));
   }, [mockChatMessages]);
+
+  useEffect(() => {
+    localStorage.setItem('pulse-templates', JSON.stringify(templates));
+  }, [templates]);
+
+  useEffect(() => {
+    localStorage.setItem('pulse-reminders', JSON.stringify(reminders));
+  }, [reminders]);
 
   // Sync users with backend
   useEffect(() => {
@@ -358,8 +383,9 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const apiBase = getApiBase();
 
   const persistUsers = async (nextUsers: User[]) => {
+    // Persist locally first for immediate UX
     localStorage.setItem('pulse-users', JSON.stringify(nextUsers));
-    if (!apiBase) return;
+    if (!apiBase) return null;
 
     try {
       const response = await fetch(`${apiBase}/api/users`, {
@@ -368,12 +394,27 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         body: JSON.stringify(nextUsers)
       });
 
+      const json = await response.json().catch(() => null);
       if (!response.ok) {
-        const json = await response.json().catch(() => null);
         console.warn('Failed to persist users to backend:', json || response.statusText);
+        return null;
       }
+
+      if (json?.success && Array.isArray(json.users)) {
+        // Ensure we use the server-normalized users to avoid stale/local/backend drift
+        try {
+          setUsers(json.users);
+        } catch (e) {
+          // swallow setState errors in persistence
+        }
+        localStorage.setItem('pulse-users', JSON.stringify(json.users));
+        return json.users;
+      }
+
+      return null;
     } catch (err) {
       console.warn('Failed to persist users to backend:', err);
+      return null;
     }
   };
 
@@ -410,6 +451,83 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     })();
   }, [apiBase]);
+
+  // Load templates & reminders from backend
+  useEffect(() => {
+    if (!apiBase) return;
+    (async () => {
+      try {
+        const tResp = await fetch(`${apiBase}/api/templates`);
+        const tJson = await tResp.json().catch(() => null);
+        if (tJson?.success && Array.isArray(tJson.templates)) {
+          setTemplates(tJson.templates);
+          localStorage.setItem('pulse-templates', JSON.stringify(tJson.templates));
+        }
+      } catch (err) {
+        // continue with local templates
+      }
+
+      try {
+        const rResp = await fetch(`${apiBase}/api/reminders`);
+        const rJson = await rResp.json().catch(() => null);
+        if (rJson?.success && Array.isArray(rJson.reminders)) {
+          setReminders(rJson.reminders);
+          localStorage.setItem('pulse-reminders', JSON.stringify(rJson.reminders));
+        }
+      } catch (err) {
+        // continue with local reminders
+      }
+    })();
+  }, [apiBase]);
+
+  const persistTemplates = async (nextTemplates: string[]) => {
+    localStorage.setItem('pulse-templates', JSON.stringify(nextTemplates));
+    if (!apiBase) return null;
+    try {
+      const resp = await fetch(`${apiBase}/api/templates`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nextTemplates) });
+      const json = await resp.json().catch(() => null);
+      if (json?.success && Array.isArray(json.templates)) {
+        setTemplates(json.templates);
+        localStorage.setItem('pulse-templates', JSON.stringify(json.templates));
+        return json.templates;
+      }
+    } catch (err) {
+      console.warn('persist templates failed', err);
+    }
+    return null;
+  };
+
+  const persistReminders = async (nextReminders: any[]) => {
+    localStorage.setItem('pulse-reminders', JSON.stringify(nextReminders));
+    if (!apiBase) return null;
+    try {
+      const resp = await fetch(`${apiBase}/api/reminders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nextReminders) });
+      const json = await resp.json().catch(() => null);
+      if (json?.success && Array.isArray(json.reminders)) {
+        setReminders(json.reminders);
+        localStorage.setItem('pulse-reminders', JSON.stringify(json.reminders));
+        return json.reminders;
+      }
+    } catch (err) {
+      console.warn('persist reminders failed', err);
+    }
+    return null;
+  };
+
+  const trackEvent = (name: string, payload?: any) => {
+    try {
+      const item = { id: `evt-${Date.now()}`, name, payload: payload || {}, timestamp: new Date().toISOString() };
+      const stored = localStorage.getItem('pulse-analytics');
+      const list = stored ? JSON.parse(stored) : [];
+      list.unshift(item);
+      localStorage.setItem('pulse-analytics', JSON.stringify(list.slice(0, 200)));
+      // Also add to integration logs for quick visibility
+      setIntegrationLogs(prev => [ { id: item.id, type: 'chat', timestamp: item.timestamp, recipient: name, subject: undefined, body: JSON.stringify(payload || {}), payloadJSON: JSON.stringify(payload || {}) }, ...prev ]);
+      console.log('Pulse Event:', name, payload || {});
+    } catch (err) {
+      console.warn('trackEvent failed', err);
+    }
+  };
 
   const sendLiveGmail = async (recipientEmail: string, subject: string, body: string) => {
     if (!apiBase || !currentUser?.email) {
@@ -702,9 +820,11 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const createNewUser = (userData: Omit<User, 'id' | 'active' | 'avatarColor'>) => {
     const normalizedEmail = userData.email.trim().toLowerCase();
     const normalizedEmployeeId = userData.employeeId.trim();
-    const existingUser = users.find(
-      (existing) => existing.email === normalizedEmail || existing.employeeId === normalizedEmployeeId
-    );
+    const existingUser = users.find((existing) => {
+      const existingEmail = String(existing.email || '').trim().toLowerCase();
+      const existingEmpId = String(existing.employeeId || '').trim().toLowerCase();
+      return existingEmail === normalizedEmail || existingEmpId === normalizedEmployeeId.toLowerCase();
+    });
 
     if (existingUser) {
       setNotifications(prev => [
@@ -1000,9 +1120,16 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         parseVoiceUpdateAI,
         askExecutiveAI,
         playElevenLabsTTS,
+        trackEvent,
         isVoiceLoading,
         login,
         logout,
+        templates,
+        setTemplates,
+        reminders,
+        setReminders,
+        persistTemplates,
+        persistReminders,
         mockEmails,
         setMockEmails,
         mockChatMessages,

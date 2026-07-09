@@ -22,6 +22,14 @@ export const AdminDashboard: React.FC = () => {
 
   // Filter list
   const executives = users.filter(u => u.role === 'executive' || u.role === 'admin');
+  const activeUsersCount = users.filter(u => u.active).length;
+  const employeeCount = users.filter(u => u.role === 'employee').length;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayUpdates = updates.filter(u => u.date === todayStr);
+  const submittedToday = todayUpdates.length;
+  const totalEmployeesActive = users.filter(u => u.role === 'employee' && u.active).length || 1;
+  const completionPct = Math.round((submittedToday / totalEmployeesActive) * 100);
+  const activeBlockers = updates.filter(u => u.blockers && u.blockers.length > 0 && u.blockers[0].trim() !== '').length;
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +78,51 @@ export const AdminDashboard: React.FC = () => {
         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
           Manage Maple Pulse company directory, configure pods and divisions, provision roles, and audit activation flags.
         </p>
+      </div>
+
+      {/* Top summary badges similar to landing screenshot */}
+      <div className="summary-row">
+        <div className="summary-badge">
+          <div className={`summary-circle pct`} style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>{completionPct}%</div>
+          <div>
+            <div className="summary-text">{submittedToday} responses</div>
+            <div className="summary-sub">of {totalEmployeesActive} expected</div>
+          </div>
+        </div>
+
+        <div className="summary-badge">
+          <div className="summary-circle alert" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)' }}>🔥</div>
+          <div>
+            <div className="summary-text">{activeBlockers} blocker{activeBlockers !== 1 ? 's' : ''}</div>
+            <div className="summary-sub">attention points</div>
+          </div>
+        </div>
+
+        <div className="summary-badge">
+          <div className="summary-circle" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }}>🕒</div>
+          <div>
+            <div className="summary-text">{Math.max(0, totalEmployeesActive - submittedToday)} pending</div>
+            <div className="summary-sub">responses</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="metrics-row" style={{ marginBottom: '24px' }}>
+        <div className="glass-card" style={{ padding: '18px' }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active Profiles</p>
+          <h3 style={{ margin: '10px 0 0', fontSize: '1.5rem', fontWeight: 800 }}>{activeUsersCount}</h3>
+          <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)' }}>Live employee and manager accounts available for day-to-day tracking.</p>
+        </div>
+        <div className="glass-card" style={{ padding: '18px' }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Employee Userbase</p>
+          <h3 style={{ margin: '10px 0 0', fontSize: '1.5rem', fontWeight: 800 }}>{employeeCount}</h3>
+          <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)' }}>Employees currently enabled to submit standups and receive notifications.</p>
+        </div>
+        <div className="glass-card" style={{ padding: '18px' }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Executive Coverage</p>
+          <h3 style={{ margin: '10px 0 0', fontSize: '1.5rem', fontWeight: 800 }}>{executives.length}</h3>
+          <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)' }}>Roles with visibility into analytics, approvals, and communications workflows.</p>
+        </div>
       </div>
 
       <div className="dashboard-grid">

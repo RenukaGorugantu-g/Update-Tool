@@ -264,6 +264,33 @@ export const EmployeeDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Summary badges for employee view */}
+      <div className="summary-row">
+        <div className="summary-badge">
+          <div className={`summary-circle pct`} style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>--%</div>
+          <div>
+            <div className="summary-text">Quick Check-ins</div>
+            <div className="summary-sub">Submit your daily status</div>
+          </div>
+        </div>
+
+        <div className="summary-badge">
+          <div className="summary-circle" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }}>📝</div>
+          <div>
+            <div className="summary-text">Voice & Text</div>
+            <div className="summary-sub">Dictate or type updates</div>
+          </div>
+        </div>
+
+        <div className="summary-badge">
+          <div className="summary-circle" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)' }}>⚑</div>
+          <div>
+            <div className="summary-text">Flag Blockers</div>
+            <div className="summary-sub">Notify managers instantly</div>
+          </div>
+        </div>
+      </div>
+
       {/* Voice Assistant Module */}
       <div className="glass-card" style={{
         padding: '24px',

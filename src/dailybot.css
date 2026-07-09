@@ -1,0 +1,51 @@
+/* Daily-themed variable overrides applied when [data-theme="daily"] is set on the document */
+[data-theme="daily"] {
+  --bg-primary: #0b1020;
+  --bg-secondary: #0f1724;
+  --bg-tertiary: #0f172a;
+  --text-primary: #e6eef8;
+  --text-secondary: #b6c9dd;
+  --text-muted: #9fb3cc;
+
+  --gradient-brand: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
+  --accent-primary: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-light: rgba(124, 58, 237, 0.08);
+  --accent-emerald: #06b6d4;
+  --accent-amber: #f59e0b;
+  --accent-blue: #60a5fa;
+
+  --glass-bg: rgba(12, 18, 32, 0.6);
+  --glass-border: rgba(255,255,255,0.04);
+  --glass-border-hover: rgba(255,255,255,0.08);
+}
+
+.daily-landing {
+  padding: 24px;
+}
+
+.daily-templates pre {
+  white-space: pre-wrap;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  color: var(--text-primary);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+}
+
+.daily-templates button, .daily-reminders button {
+  background: var(--gradient-brand);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.daily-reminders input[type="time"] {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}

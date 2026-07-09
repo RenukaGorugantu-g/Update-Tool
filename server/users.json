@@ -58,31 +58,10 @@
     "department": "Development Team",
     "pod": "India Pod",
     "reportingManager": "Sandeep M",
-<<<<<<< HEAD
     "employeeId": "MP-9604",
     "password": "Renu@Pulse2026!",
     "id": "emp-1783495121131",
     "active": true,
     "avatarColor": "#ea580c"
-=======
-    "employeeId": "1234",
-    "password": "Renu@Pulse2026!",
-    "id": "emp-1782795359765",
-    "active": false,
-    "avatarColor": "#4f46e5"
-  },
-  {
-    "name": "Renuka Gorugantu",
-    "email": "renuka@maplelearningsolutions.com",
-    "role": "employee",
-    "department": "Development Team",
-    "pod": "India Pod",
-    "reportingManager": "Sandeep M",
-    "employeeId": "1234",
-    "password": "password",
-    "id": "emp-1783336956088",
-    "active": true,
-    "avatarColor": "#4f46e5"
->>>>>>> be3e839df724e02efd83e87e9ea6c4fd6962d4d1
   }
 ]

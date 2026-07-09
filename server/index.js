@@ -5,6 +5,8 @@ import { createTokenStore } from './tokenStore.js';
 import { loadServerEnv } from './envConfig.js';
 import { createUpdatesStore } from './updatesStore.js';
 import { createUsersStore } from './usersStore.js';
+import { createTemplatesStore } from './templatesStore.js';
+import { createRemindersStore } from './remindersStore.js';
 import { createNotificationService } from './notificationService.js';
 
 loadServerEnv();
@@ -25,6 +27,8 @@ const redirectUri = isInvalidProductionRedirectUri ? 'https://update-tool.onrend
 const tokenStore = createTokenStore();
 const updatesStore = createUpdatesStore();
 const fileUsersStore = createUsersStore();
+const templatesStore = createTemplatesStore();
+const remindersStore = createRemindersStore();
 
 // File-backed users store. Seeds default users when users.json is empty.
 const initialUsers = [
@@ -364,6 +368,58 @@ app.get('/api/users', async (req, res) => {
   } catch (error) {
     console.error('get users error:', error);
     return res.status(500).json({ success: false, error: 'Unable to read users.' });
+  }
+});
+
+// Templates API
+app.get('/api/templates', async (req, res) => {
+  try {
+    const templates = await templatesStore.getAll();
+    return res.json({ success: true, templates });
+  } catch (err) {
+    console.error('get templates error:', err);
+    return res.status(500).json({ success: false, error: 'Unable to read templates.' });
+  }
+});
+
+app.post('/api/templates', async (req, res) => {
+  const data = req.body;
+  if (!Array.isArray(data)) {
+    return res.status(400).json({ success: false, error: 'Templates payload must be an array.' });
+  }
+
+  try {
+    const saved = await templatesStore.save(data);
+    return res.json({ success: true, templates: saved });
+  } catch (err) {
+    console.error('save templates error:', err);
+    return res.status(500).json({ success: false, error: 'Unable to persist templates.' });
+  }
+});
+
+// Reminders API
+app.get('/api/reminders', async (req, res) => {
+  try {
+    const reminders = await remindersStore.getAll();
+    return res.json({ success: true, reminders });
+  } catch (err) {
+    console.error('get reminders error:', err);
+    return res.status(500).json({ success: false, error: 'Unable to read reminders.' });
+  }
+});
+
+app.post('/api/reminders', async (req, res) => {
+  const data = req.body;
+  if (!Array.isArray(data)) {
+    return res.status(400).json({ success: false, error: 'Reminders payload must be an array.' });
+  }
+
+  try {
+    const saved = await remindersStore.save(data);
+    return res.json({ success: true, reminders: saved });
+  } catch (err) {
+    console.error('save reminders error:', err);
+    return res.status(500).json({ success: false, error: 'Unable to persist reminders.' });
   }
 });
 

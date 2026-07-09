@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { usePulse } from '../context/PulseContext';
 import { AlertTriangle, CheckCircle2, Mic, Paperclip, Send, Sparkles, Volume2, X } from 'lucide-react';
 
@@ -55,14 +55,8 @@ export const EmployeeDashboard: React.FC = () => {
         setVoiceText((prev) => `${prev} ${resultText}`.trim());
       };
 
-      rec.onerror = () => {
-        setIsRecording(false);
-      };
-
-      rec.onend = () => {
-        setIsRecording(false);
-      };
-
+      rec.onerror = () => setIsRecording(false);
+      rec.onend = () => setIsRecording(false);
       setRecognition(rec);
     }
   }, [currentUser, updates]);
@@ -100,13 +94,13 @@ export const EmployeeDashboard: React.FC = () => {
         setIsRecording(false);
       }
     }, 30);
+
+    return () => window.clearInterval(interval);
   };
 
   const handleStopVoiceRecord = () => {
     setIsRecording(false);
-    if (recognition) {
-      recognition.stop();
-    }
+    if (recognition) recognition.stop();
   };
 
   const handleAIParsing = async () => {
@@ -115,16 +109,18 @@ export const EmployeeDashboard: React.FC = () => {
 
     try {
       const parsed = await parseVoiceUpdateAI(voiceText);
+      const blockValue = parsed.blockers[0] === 'None' ? '' : parsed.blockers.join('\n');
+
       if (voiceTarget === 'all') {
         setCompleted(parsed.completed.join('\n'));
         setWorking(parsed.working.join('\n'));
-        setBlockers(parsed.blockers[0] === 'None' ? '' : parsed.blockers.join('\n'));
+        setBlockers(blockValue);
       } else if (voiceTarget === 'completed') {
         setCompleted((prev) => `${prev}${prev ? '\n' : ''}${parsed.completed.join('\n')}`);
       } else if (voiceTarget === 'working') {
         setWorking((prev) => `${prev}${prev ? '\n' : ''}${parsed.working.join('\n')}`);
       } else {
-        setBlockers((prev) => `${prev}${prev ? '\n' : ''}${parsed.blockers.join('\n')}`);
+        setBlockers((prev) => `${prev}${prev ? '\n' : ''}${blockValue}`);
       }
       setVoiceText('');
     } catch (error) {
@@ -143,8 +139,8 @@ export const EmployeeDashboard: React.FC = () => {
     setAttachedFiles((prev) => [...prev, ...newFiles]);
   };
 
-  const removeFile = (idx: number) => {
-    setAttachedFiles((prev) => prev.filter((_, index) => index !== idx));
+  const removeFile = (index: number) => {
+    setAttachedFiles((prev) => prev.filter((_, idx) => idx !== index));
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -166,7 +162,6 @@ export const EmployeeDashboard: React.FC = () => {
     });
 
     const deliveryStatus = typeof result?.deliveryStatus === 'string' ? result.deliveryStatus : 'ok';
-
     setSubmitSuccess(true);
     setSubmitMessage(
       deliveryStatus === 'partial'
@@ -185,33 +180,52 @@ export const EmployeeDashboard: React.FC = () => {
 
   if (!currentUser) return null;
 
+  const statusCards = [
+    { label: 'Yesterday', value: completed || 'No update yet' },
+    { label: 'Today', value: working || 'No plan yet' },
+    { label: 'Blockers', value: blockers || 'No blockers' }
+  ];
+
   return (
-    <div className="fade-in" style={{ maxWidth: '940px', margin: '0 auto', display: 'grid', gap: '20px' }}>
-      <div className="glass-card" style={{ padding: '24px 26px', display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-        <div>
-          <p className="status-pill" style={{ marginBottom: '8px' }}>Three questions • One minute</p>
-          <h2 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '6px' }}>Today’s check-in</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem' }}>
-            Share what you finished, what you are working on, and anything blocking you.
-          </p>
-        </div>
-        <div className="glass-card" style={{ padding: '10px 14px', background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-            <Sparkles size={14} color="var(--accent-primary)" />
-            Voice capture ready
+    <div className="fade-in" style={{ maxWidth: '960px', margin: '0 auto', display: 'grid', gap: '22px' }}>
+      <section className="glass-card" style={{ padding: '26px', display: 'grid', gap: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '18px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div>
+            <p className="status-pill" style={{ marginBottom: '10px' }}>Standup</p>
+            <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 800 }}>Daily updates that actually move work forward</h1>
+            <p style={{ margin: '12px 0 0', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+              Send your update, capture blockers, and keep Gmail + Google Chat notifications flowing without extra effort.
+            </p>
+          </div>
+          <div style={{ display: 'grid', gap: '12px', minWidth: '240px' }}>
+            <div className="glass-card" style={{ padding: '16px', border: '1px solid var(--glass-border)' }}>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Profile</p>
+              <p style={{ margin: '8px 0 0', fontSize: '1rem', fontWeight: 700 }}>{currentUser.name}</p>
+            </div>
+            <div className="glass-card" style={{ padding: '16px', border: '1px solid var(--glass-border)' }}>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Notifications</p>
+              <p style={{ margin: '8px 0 0', fontSize: '1rem', fontWeight: 700 }}>Google Chat + Gmail</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <form onSubmit={handleSubmit} className="glass-card" style={{ padding: '24px', display: 'grid', gap: '18px' }}>
-        <div className="grid-two">
+        <div className="grid-three" style={{ gap: '14px' }}>
+          {statusCards.map((card) => (
+            <div key={card.label} className="surface-card" style={{ padding: '18px', minHeight: '120px' }}>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{card.label}</p>
+              <p style={{ margin: '14px 0 0', color: 'var(--text-primary)', fontSize: '0.95rem', lineHeight: 1.75 }}>{card.value}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <form onSubmit={handleSubmit} className="glass-card" style={{ padding: '24px', display: 'grid', gap: '20px' }}>
+        <div className="grid-two" style={{ gap: '18px' }}>
           <div>
             <label htmlFor="project-select">Project</label>
             <select id="project-select" value={projectName} onChange={(event) => setProjectName(event.target.value)}>
               {projects.map((project) => (
-                <option key={project} value={project}>
-                  {project}
-                </option>
+                <option key={project} value={project}>{project}</option>
               ))}
             </select>
           </div>
@@ -226,75 +240,81 @@ export const EmployeeDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid-two">
-          <div className="surface-card" style={{ padding: '16px', display: 'grid', gap: '10px' }}>
+        <div className="grid-two" style={{ gap: '18px' }}>
+          <section className="surface-card" style={{ padding: '18px', display: 'grid', gap: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label htmlFor="completed-text" style={{ margin: 0, textTransform: 'none', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                Yesterday’s work
-              </label>
-              <button type="button" onClick={() => handleStartVoiceRecord('completed')} className="btn btn-secondary" style={{ padding: '6px 10px', borderRadius: '999px', fontSize: '0.75rem' }}>
-                <Mic size={13} />
+              <div>
+                <p style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700 }}>Yesterday</p>
+                <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>What you finished</p>
+              </div>
+              <button type="button" onClick={() => handleStartVoiceRecord('completed')} className="btn btn-secondary" style={{ padding: '9px 12px', fontSize: '0.82rem', borderRadius: '999px' }}>
+                <Mic size={14} />
                 Dictate
               </button>
             </div>
-            <textarea id="completed-text" rows={3} value={completed} onChange={(event) => setCompleted(event.target.value)} placeholder="What did you finish yesterday?" />
-          </div>
+            <textarea id="completed-text" rows={4} value={completed} onChange={(event) => setCompleted(event.target.value)} placeholder="Completed work" />
+          </section>
 
-          <div className="surface-card" style={{ padding: '16px', display: 'grid', gap: '10px' }}>
+          <section className="surface-card" style={{ padding: '18px', display: 'grid', gap: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label htmlFor="working-text" style={{ margin: 0, textTransform: 'none', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                Today’s plan
-              </label>
-              <button type="button" onClick={() => handleStartVoiceRecord('working')} className="btn btn-secondary" style={{ padding: '6px 10px', borderRadius: '999px', fontSize: '0.75rem' }}>
-                <Mic size={13} />
+              <div>
+                <p style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700 }}>Today</p>
+                <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>What you're focusing on</p>
+              </div>
+              <button type="button" onClick={() => handleStartVoiceRecord('working')} className="btn btn-secondary" style={{ padding: '9px 12px', fontSize: '0.82rem', borderRadius: '999px' }}>
+                <Mic size={14} />
                 Dictate
               </button>
             </div>
-            <textarea id="working-text" rows={3} value={working} onChange={(event) => setWorking(event.target.value)} placeholder="What are you focusing on today?" />
-          </div>
+            <textarea id="working-text" rows={4} value={working} onChange={(event) => setWorking(event.target.value)} placeholder="Today’s plan" />
+          </section>
         </div>
 
-        <div className="surface-card" style={{ padding: '16px', display: 'grid', gap: '10px' }}>
+        <section className="surface-card" style={{ padding: '18px', display: 'grid', gap: '14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <label htmlFor="blockers-text" style={{ margin: 0, textTransform: 'none', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-              Blockers or help needed
-            </label>
-            <button type="button" onClick={() => handleStartVoiceRecord('blockers')} className="btn btn-secondary" style={{ padding: '6px 10px', borderRadius: '999px', fontSize: '0.75rem' }}>
-              <Mic size={13} />
+            <div>
+              <p style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700 }}>Blockers</p>
+              <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>What needs help</p>
+            </div>
+            <button type="button" onClick={() => handleStartVoiceRecord('blockers')} className="btn btn-secondary" style={{ padding: '9px 12px', fontSize: '0.82rem', borderRadius: '999px' }}>
+              <Mic size={14} />
               Dictate
             </button>
           </div>
-          <textarea id="blockers-text" rows={2} value={blockers} onChange={(event) => setBlockers(event.target.value)} placeholder="Optional. Share anything delaying your work." />
-        </div>
+          <textarea id="blockers-text" rows={3} value={blockers} onChange={(event) => setBlockers(event.target.value)} placeholder="Any blockers?" />
+        </section>
 
-        <div className="surface-card" style={{ padding: '14px 16px', display: 'grid', gap: '10px' }}>
+        <section className="surface-card" style={{ padding: '18px', display: 'grid', gap: '14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <div>
-              <p style={{ fontSize: '0.9rem', fontWeight: 700 }}>Quick review</p>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>A short summary is shared with your team and manager.</p>
+              <p style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700 }}>Shared to team</p>
+              <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Delivered via Google Chat and Gmail.</p>
             </div>
-            <button type="button" onClick={() => setShowAttachments((prev) => !prev)} className="btn btn-secondary" style={{ padding: '7px 12px', fontSize: '0.78rem' }}>
+            <button type="button" onClick={() => setShowAttachments((prev) => !prev)} className="btn btn-secondary" style={{ padding: '9px 12px', fontSize: '0.82rem', borderRadius: '999px' }}>
               <Paperclip size={14} />
-              {showAttachments ? 'Hide attachments' : 'Add attachment'}
+              {showAttachments ? 'Hide attachments' : 'Attach files'}
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            <span className="status-pill">{completed.trim() ? 'Completed captured' : 'Add yesterday’s work'}</span>
-            <span className="status-pill">{working.trim() ? 'Today’s plan captured' : 'Share today’s plan'}</span>
-            <span className="status-pill">{blockers.trim() ? 'Blockers captured' : 'No blockers noted'}</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+            <span className="status-pill">{completed.trim() ? 'Yesterday recorded' : 'Add yesterday'}</span>
+            <span className="status-pill">{working.trim() ? 'Plan ready' : 'Add today'}</span>
+            <span className="status-pill">{blockers.trim() ? 'Blockers noted' : 'No blockers'}</span>
           </div>
 
           {showAttachments && (
             <div style={{ border: '1px dashed var(--glass-border)', borderRadius: '12px', padding: '12px' }}>
               <input type="file" multiple onChange={handleFileUpload} />
               {attachedFiles.length > 0 && (
-                <div style={{ display: 'grid', gap: '8px', marginTop: '10px' }}>
+                <div style={{ display: 'grid', gap: '10px', marginTop: '12px' }}>
                   {attachedFiles.map((file, index) => (
-                    <div key={`${file.name}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: 'var(--bg-tertiary)', borderRadius: '10px' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{file.name}</span>
+                    <div key={`${file.name}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--bg-tertiary)', borderRadius: '10px' }}>
+                      <div>
+                        <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>{file.name}</p>
+                        <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>{file.size}</p>
+                      </div>
                       <button type="button" onClick={() => removeFile(index)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }} aria-label={`Remove ${file.name}`}>
-                        <X size={14} />
+                        <X size={16} />
                       </button>
                     </div>
                   ))}
@@ -302,16 +322,16 @@ export const EmployeeDashboard: React.FC = () => {
               )}
             </div>
           )}
-        </div>
+        </section>
 
         {voiceText && (
-          <div className="surface-card" style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{voiceText}</div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" onClick={handleAIParsing} disabled={aiParsing} className="btn btn-primary" style={{ padding: '8px 12px', fontSize: '0.8rem' }}>
+          <div className="surface-card" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', flex: 1 }}>{voiceText}</div>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button type="button" onClick={handleAIParsing} disabled={aiParsing} className="btn btn-primary" style={{ padding: '10px 14px', fontSize: '0.85rem' }}>
                 {aiParsing ? 'Parsing…' : 'Apply to form'}
               </button>
-              <button type="button" onClick={() => setVoiceText('')} className="btn btn-secondary" style={{ padding: '8px 12px', fontSize: '0.8rem' }}>
+              <button type="button" onClick={() => setVoiceText('')} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem' }}>
                 Clear
               </button>
             </div>
@@ -319,30 +339,30 @@ export const EmployeeDashboard: React.FC = () => {
         )}
 
         {errorMsg && (
-          <div aria-live="polite" style={{ display: 'flex', gap: '8px', color: 'var(--accent-primary)', fontWeight: 700, alignItems: 'center' }}>
-            <AlertTriangle size={16} />
+          <div aria-live="polite" style={{ display: 'flex', gap: '10px', color: 'var(--accent-primary)', fontWeight: 700, alignItems: 'center' }}>
+            <AlertTriangle size={18} />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {submitSuccess && (
-          <div aria-live="polite" style={{ display: 'flex', gap: '8px', color: 'var(--accent-emerald)', fontWeight: 700, alignItems: 'center' }}>
-            <CheckCircle2 size={16} />
+          <div aria-live="polite" style={{ display: 'flex', gap: '10px', color: 'var(--accent-emerald)', fontWeight: 700, alignItems: 'center' }}>
+            <CheckCircle2 size={18} />
             <span>{submitMessage}</span>
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button type="button" onClick={isRecording ? handleStopVoiceRecord : () => handleStartVoiceRecord('all')} className="btn btn-secondary" style={{ padding: '8px 12px', fontSize: '0.8rem' }}>
-              {isRecording ? <><Mic size={14} /> Stop</> : <><Mic size={14} /> Record update</>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '11px', flexWrap: 'wrap' }}>
+            <button type="button" onClick={isRecording ? handleStopVoiceRecord : () => handleStartVoiceRecord('all')} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.9rem' }}>
+              {isRecording ? <><Mic size={15} /> Stop</> : <><Mic size={15} /> Record update</>}
             </button>
-            <button type="button" onClick={handlePreviewVoiceover} disabled={isVoiceLoading} className="btn btn-secondary" style={{ padding: '8px 12px', fontSize: '0.8rem' }}>
-              {isVoiceLoading ? 'Generating…' : <><Volume2 size={14} /> Preview</>}
+            <button type="button" onClick={handlePreviewVoiceover} disabled={isVoiceLoading} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.9rem' }}>
+              {isVoiceLoading ? 'Generating…' : <><Volume2 size={15} /> Preview</>}
             </button>
           </div>
-          <button type="submit" className="btn btn-primary" style={{ padding: '10px 18px' }}>
-            <Send size={15} />
+          <button type="submit" className="btn btn-primary" style={{ padding: '12px 26px', fontSize: '1rem' }}>
+            <Send size={16} />
             Submit update
           </button>
         </div>
