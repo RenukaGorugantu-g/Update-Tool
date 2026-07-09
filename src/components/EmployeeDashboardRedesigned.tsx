@@ -209,17 +209,17 @@ export const EmployeeDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid-three" style={{ gap: '14px' }}>
+        <div className="grid-three" style={{ gap: '20px',display: 'grid' }}>
           {statusCards.map((card) => (
             <div key={card.label} className="surface-card" style={{ padding: '18px', minHeight: '120px' }}>
               <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{card.label}</p>
-              <p style={{ margin: '14px 0 0', color: 'var(--text-primary)', fontSize: '0.95rem', lineHeight: 1.75 }}>{card.value}</p>
+              <p style={{ margin: '14px 0 0', color: 'var(--text-primary)', fontSize: '0.95rem', lineHeight: 1.75,gap: '14px', marginBottom: '24px' }}>{card.value}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <form onSubmit={handleSubmit} className="glass-card" style={{ padding: '24px', display: 'grid', gap: '20px' }}>
+      {/* <form onSubmit={handleSubmit} className="glass-card" style={{ padding: '24px', display: 'grid', gap: '20px' }}>
         <div className="grid-two" style={{ gap: '18px' }}>
           <div>
             <label htmlFor="project-select">Project</label>
@@ -366,7 +366,7 @@ export const EmployeeDashboard: React.FC = () => {
             Submit update
           </button>
         </div>
-      </form>
+      </form> */}
     </div>
   );
 };
