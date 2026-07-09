@@ -19,37 +19,55 @@
 
 ## 🚀 DEPLOYMENT STEPS
 
-### **Step 1: Deploy Backend to Render**
+### **Step 1: Deploy Backend to Render** ⚠️ CRITICAL FIX
+
+**IMPORTANT**: The previous build command was failing. Use this exact configuration:
 
 1. **Push code to GitHub** (if using git integration)
    ```bash
    git add .
-   git commit -m "Fix Render build and login issues"
+   git commit -m "Fix Render deployment - use npm ci for reliable installs"
    git push origin main
    ```
 
-2. **On Render Dashboard**:
-   - Create new Web Service or use existing
-   - Connect to GitHub repo
-   - Set Build Command: `npm install --prefix server`
-   - Set Start Command: `cd server && npm start`
-   - Set Environment Variables:
-     ```
-     NODE_VERSION = 24
-     PORT = 5000
-     FRONTEND_URL = https://<your-vercel-app>.vercel.app
-     GOOGLE_CLIENT_ID = <from Google Cloud Console>
-     GOOGLE_CLIENT_SECRET = <from Google Cloud Console>
-     GOOGLE_REDIRECT_URI = https://update-tool.onrender.com/auth/google/callback
-     CHAT_WEBHOOK_SPACE_DEVELOPMENT = https://chat.googleapis.com/v1/spaces/SPACE_ID/messages?key=API_KEY
-     CHAT_WEBHOOK_SPACE_DESIGN = https://chat.googleapis.com/v1/spaces/SPACE_ID/messages?key=API_KEY
-     CHAT_WEBHOOK_SPACE_MARKETING = https://chat.googleapis.com/v1/spaces/SPACE_ID/messages?key=API_KEY
-     CHAT_WEBHOOK_SPACE_SALES = https://chat.googleapis.com/v1/spaces/SPACE_ID/messages?key=API_KEY
-     CHAT_WEBHOOK_SPACE_CLIENT_SUCCESS = https://chat.googleapis.com/v1/spaces/SPACE_ID/messages?key=API_KEY
-     CHAT_WEBHOOK_SPACE_GENERAL = https://chat.googleapis.com/v1/spaces/SPACE_ID/messages?key=API_KEY
-     ```
+2. **On Render Dashboard** - IMPORTANT settings:
+   - Repository: `your-repo-url`
+   - Branch: `main`
+   - Build Command: `cd server && npm ci --production=false`
+   - Start Command: `cd server && npm ci --production=false && npm start`
+   - Environment: Node
+   - Node Version: 24 (set as environment variable)
 
-3. **Wait for deployment** - Should complete in 2-3 minutes
+3. **Set These Exact Environment Variables** in Render dashboard:
+   ```
+   NODE_VERSION = 24
+   PORT = 5000
+   FRONTEND_URL = https://<your-vercel-app>.vercel.app
+   GOOGLE_CLIENT_ID = <from Google Cloud Console>
+   GOOGLE_CLIENT_SECRET = <from Google Cloud Console>
+   GOOGLE_REDIRECT_URI = https://update-tool.onrender.com/auth/google/callback
+   CHAT_WEBHOOK_SPACE_DEVELOPMENT = https://chat.googleapis.com/v1/spaces/SPACE_ID/messages?key=API_KEY
+   CHAT_WEBHOOK_SPACE_DESIGN = https://chat.googleapis.com/v1/spaces/SPACE_ID/messages?key=API_KEY
+   CHAT_WEBHOOK_SPACE_MARKETING = https://chat.googleapis.com/v1/spaces/SPACE_ID/messages?key=API_KEY
+   CHAT_WEBHOOK_SPACE_SALES = https://chat.googleapis.com/v1/spaces/SPACE_ID/messages?key=API_KEY
+   CHAT_WEBHOOK_SPACE_CLIENT_SUCCESS = https://chat.googleapis.com/v1/spaces/SPACE_ID/messages?key=API_KEY
+   CHAT_WEBHOOK_SPACE_GENERAL = https://chat.googleapis.com/v1/spaces/SPACE_ID/messages?key=API_KEY
+   ```
+
+4. **Deploy**:
+   - Render will automatically build and deploy on push
+   - Check Logs to verify: you should see
+     ```
+     ==> Build command: cd server && npm ci --production=false
+     ==> npm install (with all packages installed)
+     ==> Start command: cd server && npm ci --production=false && npm start
+     ```
+   - Wait until you see: `Listening on port 5000` or similar
+
+**Troubleshooting Render Deployment**:
+   - If you see `ERR_MODULE_NOT_FOUND: express`, it means npm ci didn't run
+   - Check Render Logs (not the deploy output) for detailed error messages
+   - If stuck, go to Render dashboard → Clear build cache → Redeploy
 
 ### **Step 2: Deploy Frontend to Vercel**
 
@@ -90,12 +108,16 @@
 
 ### **Issue: "Cannot find package 'express'" on Render**
 
-**Cause**: Build command wasn't installing server dependencies
+**Cause**: Dependencies weren't installed before the server tried to start
 
-**Solution**: 
-- Verify `render.yaml` has: `buildCommand: npm install --prefix server`
-- Check that `server/package.json` has all dependencies listed
-- Restart deployment from Render dashboard
+**Solution** (CRITICAL):
+1. Go to Render Dashboard → Your Service → Settings
+2. Update Build Command: `cd server && npm ci --production=false`
+3. Update Start Command: `cd server && npm ci --production=false && npm start`
+4. Click "Clear build cache"
+5. Redeploy (push to GitHub or manually redeploy from dashboard)
+6. Check Logs and verify npm packages are being installed
+7. Wait until you see "Listening on port" message
 
 ### **Issue: "Invalid credentials" on Login**
 
