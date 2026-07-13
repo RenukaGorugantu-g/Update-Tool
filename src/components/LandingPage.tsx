@@ -199,6 +199,20 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="pulse-landing">
+      {/* ============ NAVBAR ============ */}
+      <nav className="navbar">
+        <div className="navbar-inner">
+          <img
+            className="navbar-logo"
+            src="https://framerusercontent.com/images/sOF8vdyAVOEvCEsxVJEhhV6lY.png?scale-down-to=512&width=2070&height=922"
+            alt="Maple Pulse logo"
+          />
+          <button className="btn btn-primary navbar-signup" onClick={() => goto('/login')}>
+            Sign up
+          </button>
+        </div>
+      </nav>
+
       {/* ============ HERO ============ */}
       <header className="hero">
         <div className="hero-copy">
@@ -253,7 +267,7 @@ const LandingPage: React.FC = () => {
             </div>
             <div className="chat-thread">
               <div className="bubble bubble-bot">
-                Morning, Team 👋 What did you ship yesterday?
+                Morning, Krishna 👋 What did you ship yesterday?
               </div>
               <div className="bubble bubble-user delay-1">
                 Wrapped the audit report export and fixed the Brevo merge tags.

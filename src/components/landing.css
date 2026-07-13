@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
 
 :root {
   --ink: #14231c;
@@ -21,7 +21,7 @@
 .pulse-landing {
   background: var(--cream);
   color: var(--ink);
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   overflow-x: hidden;
 }
@@ -92,7 +92,7 @@
 
 /* ---------- buttons ---------- */
 .btn {
-  font-family: 'Inter', sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
   font-weight: 600;
   font-size: 0.95rem;
   padding: 13px 26px;
@@ -132,6 +132,36 @@
   height: 8px;
   border-radius: 50%;
   background: var(--amber);
+}
+
+/* ---------- navbar ---------- */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(250, 248, 243, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+
+.navbar-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar-logo {
+  height: 50px;
+  width: auto;
+  display: block;
+}
+
+.navbar-signup {
+  padding: 10px 22px;
+  font-size: 0.9rem;
 }
 
 /* ---------- hero ---------- */
