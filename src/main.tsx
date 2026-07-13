@@ -1,11 +1,13 @@
 import React, { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { ClerkProvider } from '@clerk/clerk-react'
 import './index.css'
 import App from './App.tsx'
 import { PulseProvider } from './context/PulseContext.tsx'
 // Mount the full application but wrap in an Error Boundary so runtime
 // errors inside the app render a visible message instead of a blank page.
 const rootEl = document.getElementById('root')!;
+const clerkPublishableKey = (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '').trim();
 
 class ErrorBoundary extends React.Component<any, { error: Error | null }> {
   constructor(props: any) {
@@ -35,12 +37,22 @@ class ErrorBoundary extends React.Component<any, { error: Error | null }> {
   }
 }
 
+const AppShell = () => (
+  <PulseProvider>
+    <App />
+  </PulseProvider>
+);
+
 createRoot(rootEl).render(
   <StrictMode>
     <ErrorBoundary>
-      <PulseProvider>
-        <App />
-      </PulseProvider>
+      {clerkPublishableKey ? (
+        <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/">
+          <AppShell />
+        </ClerkProvider>
+      ) : (
+        <AppShell />
+      )}
     </ErrorBoundary>
   </StrictMode>
 );

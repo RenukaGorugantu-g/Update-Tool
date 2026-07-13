@@ -1,112 +1,9 @@
-import React, { useState } from 'react';
-import { usePulse } from '../context/PulseContext';
-import { Sparkles, Lock, CheckCircle2, Eye, EyeOff, LogIn } from 'lucide-react';
-
-const getApiBase = () => {
-  const configuredBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '');
-  if (configuredBase) {
-    return configuredBase;
-  }
-
-  if (window.location.hostname === 'localhost') {
-    return 'http://localhost:5000';
-  }
-
-  return '';
-};
+import React from 'react';
+import { SignInButton, SignedIn, SignedOut } from '@clerk/clerk-react';
+import { Sparkles, CheckCircle2, LogIn } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const { login, users, setUsers } = usePulse();
-  const [loginInput, setLoginInput] = useState('');
-  const [password, setPassword] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showResetPanel, setShowResetPanel] = useState(false);
-  const [resetIdentifier, setResetIdentifier] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showResetPassword] = useState(false);
-  const [showConfirmResetPassword] = useState(false);
-  const [resetMsg, setResetMsg] = useState('');
-  const [, setResetting] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!loginInput.trim() || !password.trim()) {
-      setErrorMsg('Please enter both email/ID and password.');
-      return;
-    }
-
-    setErrorMsg('');
-    setLoading(true);
-
-    setTimeout(() => {
-      const success = login(loginInput, password);
-      setLoading(false);
-      if (!success) {
-        // Provide detailed error message with demo account info
-        const demoAccounts = users
-          .filter(u => u.active)
-          .slice(0, 2)
-          .map(u => `${u.email}`)
-          .join(', ');
-        
-        setErrorMsg(
-          `Invalid credentials. Try demo accounts: ${demoAccounts || 'Check admin panel'}. All passwords end with current year (e.g., @Pulse2026!)`
-        );
-      }
-    }, 800);
-  };
-
-  const handleResetPassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!resetIdentifier.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-      setResetMsg('Please enter your email/ID and choose a new password.');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setResetMsg('The new passwords do not match.');
-      return;
-    }
-
-    const targetUser = users.find(
-      user => user.email.toLowerCase() === resetIdentifier.trim().toLowerCase() || user.employeeId.toLowerCase() === resetIdentifier.trim().toLowerCase()
-    );
-
-    if (!targetUser) {
-      setResetMsg('No matching account found. Please check your email or employee ID.');
-      return;
-    }
-
-    setResetting(true);
-    setResetMsg('');
-
-    setTimeout(async () => {
-      const updatedUsers = users.map(user => user.id === targetUser.id ? { ...user, password: newPassword } : user);
-      setUsers(updatedUsers);
-      const apiBase = getApiBase();
-      if (apiBase) {
-        try {
-          await fetch(`${apiBase}/api/users`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedUsers)
-          });
-        } catch (error) {
-          console.warn('Unable to persist password reset to backend:', error);
-        }
-      }
-      setResetting(false);
-      setResetMsg('Password updated successfully. You can now sign in with your new password.');
-      setResetIdentifier('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setShowResetPanel(false);
-      setLoginInput(targetUser.email);
-    }, 600);
-  };
+  const clerkEnabled = Boolean((import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '').trim());
 
   return (
     <div style={{
@@ -177,16 +74,16 @@ export const Login: React.FC = () => {
 
           <div style={{ maxWidth: '560px', display: 'grid', gap: '16px' }}>
             <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
-              Fast sign-in for managers and contributors, with secure access to updates and a polished dashboard experience. Comments continue to route through Google Chat exactly as before.
+              Secure employee authentication with Clerk. Use your company account to access updates, dashboards, and report workflows.
             </p>
             <div style={{ display: 'grid', gap: '12px', padding: '20px 22px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.16)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <CheckCircle2 size={18} color='var(--accent-primary)' />
-                <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>Auto-save updates locally and sync them securely.</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>Clerk is the only authentication path.</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Lock size={18} color='var(--accent-secondary)' />
-                <span style={{ color: 'var(--text-secondary)' }}>Passwords stay in your session and demo accounts are ready to try.</span>
+                <CheckCircle2 size={18} color='var(--accent-primary)' />
+                <span style={{ color: 'var(--text-secondary)' }}>Sign in or create an account from the secure Clerk panel.</span>
               </div>
             </div>
           </div>
@@ -196,101 +93,39 @@ export const Login: React.FC = () => {
           <div style={{ display: 'grid', gap: '18px' }}>
             <div>
               <h2 style={{ fontSize: '1.35rem', margin: 0, fontWeight: 800 }}>Sign in</h2>
-              <p style={{ marginTop: '6px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Use your email or employee ID to continue.</p>
+              <p style={{ marginTop: '6px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Use Clerk for secure employee authentication.</p>
             </div>
 
-            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '16px' }}>
-              <label style={{ display: 'grid', gap: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Email or employee ID
-                <input
-                  type="text"
-                  value={loginInput}
-                  onChange={(event) => setLoginInput(event.target.value)}
-                  placeholder="name@company.com or EMP123"
-                  style={{ width: '100%', padding: '14px 16px', borderRadius: '16px', border: '1px solid var(--glass-border)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', outline: 'none' }}
-                />
-              </label>
-
-              <label style={{ display: 'grid', gap: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Password
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '16px', background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '0 12px' }}>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Enter password"
-                    style={{ width: '100%', padding: '14px 0', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text-primary)' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </label>
-
-              {errorMsg && (
-                <div style={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: '0.9rem' }}>{errorMsg}</div>
-              )}
-
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-                <LogIn size={16} />
-                {loading ? 'Signing in…' : 'Continue'
-                }
-              </button>
-            </form>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-              <button type="button" onClick={() => setShowResetPanel((prev) => !prev)} className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center', padding: '12px 14px' }}>
-                {showResetPanel ? 'Close reset' : 'Forgot password'}
-              </button>
-              <button type="button" className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center', padding: '12px 14px' }}>
-                Demo login
-              </button>
-            </div>
-
-            {showResetPanel && (
-              <div style={{ display: 'grid', gap: '14px', padding: '18px', background: 'var(--bg-primary)', borderRadius: '18px', border: '1px solid var(--glass-border)' }}>
-                <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)' }}>Reset your password with your email or employee ID.</p>
-                <label style={{ display: 'grid', gap: '8px', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-                  Email or ID
-                  <input
-                    type="text"
-                    value={resetIdentifier}
-                    onChange={(event) => setResetIdentifier(event.target.value)}
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: '14px', border: '1px solid var(--glass-border)', background: 'var(--bg-tertiary)' }}
-                  />
-                </label>
-                <label style={{ display: 'grid', gap: '8px', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-                  New password
-                  <input
-                    type={showResetPassword ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={(event) => setNewPassword(event.target.value)}
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: '14px', border: '1px solid var(--glass-border)', background: 'var(--bg-tertiary)' }}
-                  />
-                </label>
-                <label style={{ display: 'grid', gap: '8px', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-                  Confirm password
-                  <input
-                    type={showConfirmResetPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: '14px', border: '1px solid var(--glass-border)', background: 'var(--bg-tertiary)' }}
-                  />
-                </label>
-                <button
-                  type="button"
-                  onClick={handleResetPassword}
-                  className="btn btn-primary"
-                  style={{ width: '100%', justifyContent: 'center' }}
-                >
-                  Reset password
-                </button>
-                {resetMsg && <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.88rem' }}>{resetMsg}</p>}
+            {!clerkEnabled ? (
+              <div style={{ display: 'grid', gap: '8px', padding: '14px', background: 'rgba(245, 158, 11, 0.10)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '14px' }}>
+                <p style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 800 }}>Clerk is not enabled in this deployment.</p>
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.86rem' }}>
+                  Set VITE_CLERK_PUBLISHABLE_KEY in your frontend environment to enable the Clerk sign-in flow.
+                </p>
               </div>
+            ) : (
+              <>
+                <SignedOut>
+                  <div style={{ display: 'grid', gap: '12px' }}>
+                    <SignInButton mode="modal">
+                      <button type="button" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                        <LogIn size={16} />
+                        Continue with Google / Work Email
+                      </button>
+                    </SignInButton>
+                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.86rem' }}>
+                      Use your Google account or company email to enter the dashboard securely.
+                    </p>
+                  </div>
+                </SignedOut>
+
+                <SignedIn>
+                  <div style={{ display: 'grid', gap: '10px', padding: '14px', background: 'var(--bg-primary)', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+                    <p style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 700 }}>Clerk session active.</p>
+                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.86rem' }}>Your signed-in session will now drive the dashboard and status report flow.</p>
+                  </div>
+                </SignedIn>
+              </>
             )}
           </div>
         </div>

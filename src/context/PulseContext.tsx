@@ -215,7 +215,7 @@ const getApiBase = () => {
 
 
 export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<'light' | 'dark'>('light'); // Default to light mode
+  const [theme, setThemeState] = useState<'light' | 'dark'>('light'); // Default to the clean white enterprise shell
 
   // Persistent states from localStorage with seed data fallback
   const [users, setUsers] = useState<User[]>(() => {
@@ -336,7 +336,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setThemeState(savedTheme);
       document.documentElement.setAttribute('data-theme', savedTheme);
     } else {
-      document.documentElement.setAttribute('data-theme', 'light'); // Default light
+      document.documentElement.setAttribute('data-theme', 'light'); // Default to the requested clean white theme
     }
   }, []);
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { SignOutButton, UserButton } from '@clerk/clerk-react';
 import { usePulse } from './context/PulseContext';
 import { Sidebar } from './components/Sidebar';
 import { EmployeeDashboard } from './components/EmployeeDashboardRedesigned';
@@ -11,6 +12,7 @@ import Checkins from './components/Checkins';
 import { Login } from './components/Login';
 import { DailyLanding } from './components/Dailybot/DailyLanding';
 import { WorkspaceHub } from './components/WorkspaceHub';
+import { ClerkSessionBridge } from './components/ClerkSessionBridge';
 
 import { 
   Bell, 
@@ -35,12 +37,13 @@ const getApiBase = () => {
 };
 
 function App() {
-  const { 
-    currentUser, 
-    notifications, 
+  const {
+    currentUser,
+    notifications,
     setNotifications,
     logout
   } = usePulse();
+  const clerkEnabled = Boolean((import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '').trim());
   const [, setShowOnboarding] = useState(false);
   
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -239,13 +242,17 @@ function App() {
     const path = typeof window !== 'undefined' ? window.location.pathname : '/';
     if (path.startsWith('/daily')) return <DailyLanding />;
     if (path === '/' || path === '/home' || path === '/landing') return <LandingPage />;
-    return <Login />;
+    return (
+      <>
+        {clerkEnabled ? <ClerkSessionBridge /> : null}
+        <Login />
+      </>
+    );
   }
-
-
 
   return (
     <div className="app-container">
+      {clerkEnabled ? <ClerkSessionBridge /> : null}
       {/* Sidebar Navigation */}
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
@@ -284,28 +291,34 @@ function App() {
 
           {/* Right: Persona Switcher & Notifications */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', position: 'relative' }}>
+            {clerkEnabled ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <UserButton afterSignOutUrl="/" />
+              </div>
+            ) : null}
             
             {/* User Profile dropdown */}
             <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => {
-                  setShowUserDropdown(!showUserDropdown);
-                  setShowNotifications(false);
-                }}
-                className="btn btn-secondary"
-                style={{
-                  fontSize: '0.8rem',
-                  padding: '6px 14px',
-                  borderRadius: '24px',
-                  gap: '8px',
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  border: '1px solid var(--glass-border)',
-                  boxShadow: 'var(--card-shadow)',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  onClick={() => {
+                    setShowUserDropdown(!showUserDropdown);
+                    setShowNotifications(false);
+                  }}
+                  className="btn btn-secondary"
+                  style={{
+                    fontSize: '0.8rem',
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    gap: '8px',
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid var(--glass-border)',
+                    boxShadow: 'none',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
                 <div style={{
                   width: '24px',
                   height: '24px',
@@ -323,6 +336,7 @@ function App() {
                 <span style={{ fontWeight: 600 }}>{currentUser.name}</span>
                 <ChevronDown size={12} style={{ color: 'var(--text-muted)' }} />
               </button>
+              </div>
 
               {showUserDropdown && (
                 <div className="glass-card" style={{
@@ -446,16 +460,32 @@ function App() {
                       >
                         Run Tour
                       </button>
-                      <button
-                        onClick={() => {
-                          setShowUserDropdown(false);
-                          logout();
-                        }}
-                        className="btn"
-                        style={{ flex: 1, padding: '8px 12px', fontSize: '0.8rem', color: 'var(--accent-primary)', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16,185,129,0.08)', justifyContent: 'center', borderRadius: '12px' }}
-                      >
-                        Log Out
-                      </button>
+                      {clerkEnabled ? (
+                        <SignOutButton>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowUserDropdown(false);
+                              logout();
+                            }}
+                            className="btn"
+                            style={{ flex: 1, padding: '8px 12px', fontSize: '0.8rem', color: 'var(--accent-primary)', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16,185,129,0.08)', justifyContent: 'center', borderRadius: '12px' }}
+                          >
+                            Log Out
+                          </button>
+                        </SignOutButton>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setShowUserDropdown(false);
+                            logout();
+                          }}
+                          className="btn"
+                          style={{ flex: 1, padding: '8px 12px', fontSize: '0.8rem', color: 'var(--accent-primary)', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16,185,129,0.08)', justifyContent: 'center', borderRadius: '12px' }}
+                        >
+                          Log Out
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

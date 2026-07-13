@@ -61,7 +61,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
       position: 'sticky',
       top: '16px',
       zIndex: 10,
-      background: 'var(--sidebar-bg)'
+      background: 'var(--sidebar-bg)',
+      borderRadius: '10px',
+      boxShadow: 'none'
     }}>
       <div>
         {/* Brand Header */}
@@ -110,20 +112,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
                   alignItems: 'center',
                   gap: '12px',
                   width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: 'var(--border-radius-sm)',
-                  border: 'none',
-                  background: isActive ? 'var(--accent-light)' : 'transparent',
-                  color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  padding: '10px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid transparent',
+                  background: isActive ? 'rgba(var(--accent-primary-rgb), 0.12)' : 'transparent',
+                  color: isActive ? 'var(--accent-primary)' : 'var(--text-primary)',
                   cursor: 'pointer',
-                  fontWeight: isActive ? 700 : 500,
+                  fontWeight: isActive ? 700 : 600,
                   fontSize: '0.9rem',
                   textAlign: 'left',
                   transition: 'all var(--transition-fast)'
                 }}
               >
-                <Icon size={18} style={{ color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)' }} />
-                <span>{item.label}</span>
+                <Icon size={18} style={{ color: isActive ? 'var(--accent-primary)' : 'var(--text-primary)' }} />
+                <span style={{ display: 'inline-block', color: 'inherit' }}>{item.label}</span>
               </button>
             );
           })}
@@ -177,7 +179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
           justifyContent: 'space-between',
           background: 'var(--bg-tertiary)',
           padding: '4px',
-          borderRadius: '20px',
+          borderRadius: '8px',
           border: '1px solid var(--glass-border)'
         }}>
           <button
