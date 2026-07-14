@@ -1,6 +1,7 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { usePulse } from '../context/PulseContext';
-import { AlertTriangle, CheckCircle2, Mic, Paperclip, Send, Volume2, X } from 'lucide-react';
+import { exportAnalyticsToCsv } from '../utils/reporting';
+import { AlertTriangle, CheckCircle2, Download, Mic, Paperclip, Send, Volume2, X } from 'lucide-react';
 
 export const EmployeeDashboard: React.FC = () => {
   const {
@@ -28,6 +29,26 @@ export const EmployeeDashboard: React.FC = () => {
   const [aiParsing, setAiParsing] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
   const [showAttachments, setShowAttachments] = useState(false);
+  const [showFullForm, setShowFullForm] = useState(false);
+
+  const personalUpdates = useMemo(() => {
+    if (!currentUser) return [] as Array<any>;
+    return updates
+      .filter((update) => update.employeeId === currentUser.id)
+      .sort((a, b) => Date.parse(b.timestamp || b.date || '') - Date.parse(a.timestamp || a.date || ''));
+  }, [currentUser, updates]);
+
+  const personalSummary = useMemo(() => {
+    const completedTasks = personalUpdates.reduce((sum, update) => sum + (Array.isArray(update.completed) ? update.completed.filter((task: string) => task.trim()).length : 0), 0);
+    const workingTasks = personalUpdates.reduce((sum, update) => sum + (Array.isArray(update.working) ? update.working.filter((task: string) => task.trim()).length : 0), 0);
+    const blockers = personalUpdates.reduce((sum, update) => sum + (Array.isArray(update.blockers) ? update.blockers.filter((entry: string) => String(entry).trim() && String(entry).toLowerCase() !== 'none' && String(entry).toLowerCase() !== 'none reported').length : 0), 0);
+    return {
+      submittedCount: personalUpdates.length,
+      completedTasks,
+      workingTasks,
+      blockers
+    };
+  }, [personalUpdates]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -178,6 +199,18 @@ export const EmployeeDashboard: React.FC = () => {
     void playElevenLabsTTS(ttsText);
   };
 
+  const exportMyReport = () => {
+    const rows = personalUpdates.map((update) => ({
+      Date: update.date,
+      Project: update.projectName,
+      Completed: Array.isArray(update.completed) ? update.completed.join(' | ') : '',
+      Working: Array.isArray(update.working) ? update.working.join(' | ') : '',
+      Blockers: Array.isArray(update.blockers) ? update.blockers.join(' | ') : '',
+      Priority: update.priority
+    }));
+    exportAnalyticsToCsv('my-sprint-report.csv', rows);
+  };
+
   if (!currentUser) return null;
 
   const statusCards = [
@@ -219,7 +252,53 @@ export const EmployeeDashboard: React.FC = () => {
         </div>
       </section>
 
-      <form onSubmit={handleSubmit} className="glass-card" style={{ padding: '24px', display: 'grid', gap: '20px' }}>
+      <section className="glass-card" style={{ padding: '24px', display: 'grid', gap: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>Your sprint history</h3>
+            <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Review your recent 14-day report activity and export it anytime.</p>
+          </div>
+          <button type="button" onClick={exportMyReport} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Download size={14} />
+            Export CSV
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+          <span className="status-pill">{personalSummary.submittedCount} submissions</span>
+          <span className="status-pill">{personalSummary.completedTasks} completed tasks</span>
+          <span className="status-pill">{personalSummary.workingTasks} active tasks</span>
+          <span className="status-pill">{personalSummary.blockers} blockers</span>
+        </div>
+
+        <div style={{ display: 'grid', gap: '10px' }}>
+          {personalUpdates.length === 0 ? (
+            <div style={{ padding: '12px 14px', borderRadius: '10px', background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>You have not submitted any reports yet.</div>
+          ) : (
+            // Show only the most recent update by default
+            <div key={personalUpdates[0]?.id} style={{ padding: '12px 14px', borderRadius: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--glass-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ fontWeight: 700 }}>{personalUpdates[0].date}</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{personalUpdates[0].projectName}</div>
+              </div>
+              <div style={{ marginTop: '8px', display: 'grid', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                <div><strong>Completed:</strong> {Array.isArray(personalUpdates[0].completed) && personalUpdates[0].completed.length ? personalUpdates[0].completed.join(' • ') : 'No entries'}</div>
+                <div><strong>Working:</strong> {Array.isArray(personalUpdates[0].working) && personalUpdates[0].working.length ? personalUpdates[0].working.join(' • ') : 'No entries'}</div>
+                <div><strong>Blockers:</strong> {Array.isArray(personalUpdates[0].blockers) && personalUpdates[0].blockers.length ? personalUpdates[0].blockers.join(' • ') : 'No blockers'}</div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button type="button" className="btn btn-secondary" onClick={() => setShowFullForm((s) => !s)}>
+            {showFullForm ? 'Hide full form' : 'Edit / Add update'}
+          </button>
+        </div>
+      </section>
+
+      {showFullForm && (
+        <form onSubmit={handleSubmit} className="glass-card" style={{ padding: '24px', display: 'grid', gap: '20px' }}>
         <div className="grid-two" style={{ gap: '18px' }}>
           <div>
             <label htmlFor="project-select">Project</label>
@@ -366,7 +445,8 @@ export const EmployeeDashboard: React.FC = () => {
             Submit update
           </button>
         </div>
-      </form>
+        </form>
+      )}
     </div>
   );
 };

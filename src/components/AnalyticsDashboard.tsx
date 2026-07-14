@@ -1,57 +1,55 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { usePulse } from '../context/PulseContext';
+import { buildTeamAnalytics, exportAnalyticsToCsv, getPeriodLabel } from '../utils/reporting';
 import {
   BarChart,
   PieChart,
   TrendingUp,
   AlertTriangle,
-  Calendar
+  Calendar,
+  Download,
+  UserRound
 } from 'lucide-react';
 
 export const AnalyticsDashboard: React.FC = () => {
   const { users, updates } = usePulse();
-  const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'sprint' | 'monthly'>('sprint');
 
-  const activeEmployees = users.filter((user) => user.role === 'employee' && user.active);
-  const now = new Date();
-  const rangeStart =
-    timeRange === 'monthly'
-      ? new Date(now.getFullYear(), now.getMonth(), 1)
-      : timeRange === 'daily'
-        ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        : new Date(now.getTime() - 13 * 24 * 60 * 60 * 1000);
-
-  const rangeUpdates = updates.filter((update) => {
-    const timestamp = Date.parse(update.timestamp || update.date || '');
-    if (Number.isNaN(timestamp)) return false;
-    return timestamp >= rangeStart.getTime();
-  });
-
-  const totalEmployees = activeEmployees.length;
-  const submittedCount = rangeUpdates.length;
-  const pendingCount = Math.max(0, totalEmployees - submittedCount);
-  const completionRate = totalEmployees > 0 ? Math.round((submittedCount / totalEmployees) * 100) : 0;
-
-  const blockerCount = rangeUpdates.reduce((sum, update) => sum + (Array.isArray(update.blockers) ? update.blockers.filter((entry) => String(entry).trim() && String(entry).toLowerCase() !== 'none').length : 0), 0);
+  const analytics = useMemo(() => buildTeamAnalytics({ updates, users, range: timeRange }), [updates, users, timeRange]);
 
   const blockerCategories = [
-    { name: 'Technical', count: Math.floor(blockerCount * 0.4), color: 'var(--accent-primary)' },
-    { name: 'Process', count: Math.floor(blockerCount * 0.3), color: 'var(--accent-amber)' },
-    { name: 'Resource', count: Math.ceil(blockerCount * 0.3), color: 'var(--accent-blue)' }
+    { name: 'Technical', count: Math.max(0, Math.round(analytics.blockerCount * 0.4)), color: 'var(--accent-primary)' },
+    { name: 'Process', count: Math.max(0, Math.round(analytics.blockerCount * 0.3)), color: 'var(--accent-amber)' },
+    { name: 'Resource', count: Math.max(0, analytics.blockerCount - Math.round(analytics.blockerCount * 0.4) - Math.round(analytics.blockerCount * 0.3)), color: 'var(--accent-blue)' }
   ];
 
   const activityData = Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - (6 - i));
     const dateStr = date.toISOString().split('T')[0];
-    const count = rangeUpdates.filter(u => u.date === dateStr).length;
+    const count = analytics.rangeUpdates.filter((update) => update.date === dateStr).length;
     return {
       day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.getDay()],
-      count: Math.max(count, Math.random() * 5)
+      count
     };
   });
 
-  const periodLabel = timeRange === 'monthly' ? 'this month' : timeRange === 'daily' ? 'today' : 'this sprint';
+  const periodLabel = getPeriodLabel(timeRange);
+
+  const exportReport = () => {
+    const rows = analytics.employeeSummaries.map((summary) => ({
+      Employee: summary.employeeName,
+      Department: summary.department,
+      Pod: summary.pod,
+      Submitted: summary.submittedCount,
+      Completion: `${summary.completionRate}%`,
+      TasksCompleted: summary.tasksCompleted,
+      TasksWorking: summary.tasksWorking,
+      Blockers: summary.blockers,
+      LastUpdate: summary.lastUpdate || 'No updates'
+    }));
+    exportAnalyticsToCsv(`analytics-${timeRange}.csv`, rows);
+  };
 
   return (
     <div className="fade-in" style={{ padding: '8px 0' }}>
@@ -67,13 +65,18 @@ export const AnalyticsDashboard: React.FC = () => {
           <Calendar size={16} style={{ color: 'var(--text-muted)' }} />
           <select
             value={timeRange}
-            onChange={(event) => setTimeRange(event.target.value as 'daily' | 'weekly' | 'monthly')}
+            onChange={(event) => setTimeRange(event.target.value as 'daily' | 'weekly' | 'sprint' | 'monthly')}
             style={{ width: 'auto', padding: '8px 12px', fontSize: '0.85rem' }}
           >
             <option value="daily">Daily View</option>
             <option value="weekly">Weekly View</option>
+            <option value="sprint">Sprint View</option>
             <option value="monthly">Monthly View</option>
           </select>
+          <button onClick={exportReport} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', fontSize: '0.82rem' }}>
+            <Download size={14} />
+            Export CSV
+          </button>
         </div>
       </div>
 
@@ -95,14 +98,14 @@ export const AnalyticsDashboard: React.FC = () => {
                 stroke="var(--accent-emerald)"
                 strokeWidth="16"
                 strokeDasharray={`${2 * Math.PI * 70}`}
-                strokeDashoffset={`${2 * Math.PI * 70 * (1 - completionRate / 100)}`}
+                strokeDashoffset={`${2 * Math.PI * 70 * (1 - analytics.completionRate / 100)}`}
                 strokeLinecap="round"
                 transform="rotate(-90 100 100)"
                 style={{ transition: 'stroke-dashoffset 1s ease-out' }}
               />
             </svg>
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-              <h4 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>{completionRate}%</h4>
+              <h4 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>{analytics.completionRate}%</h4>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Submitted {periodLabel}</span>
             </div>
           </div>
@@ -110,11 +113,11 @@ export const AnalyticsDashboard: React.FC = () => {
           <div style={{ display: 'flex', gap: '20px', marginTop: '20px', width: '100%', justifyContent: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ width: '12px', height: '12px', borderRadius: '4px', backgroundColor: 'var(--accent-emerald)' }}></div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Submitted ({submittedCount})</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Submitted ({analytics.submittedCount})</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ width: '12px', height: '12px', borderRadius: '4px', backgroundColor: 'var(--bg-tertiary)' }}></div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Pending ({pendingCount})</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Pending ({analytics.pendingCount})</span>
             </div>
           </div>
         </div>
@@ -215,6 +218,41 @@ export const AnalyticsDashboard: React.FC = () => {
           </div>
         </div>
 
+      </div>
+
+      <div className="glass-card" style={{ padding: '24px', marginTop: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 800 }}>Per-employee report breakdown</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Each person’s submitted work, task volume, blocker count, and latest update for the selected period.</p>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gap: '12px' }}>
+          {analytics.employeeSummaries.length === 0 ? (
+            <div style={{ padding: '16px', background: 'var(--bg-tertiary)', borderRadius: '12px', color: 'var(--text-secondary)' }}>
+              No updates have been submitted for this period yet.
+            </div>
+          ) : analytics.employeeSummaries.map((summary) => (
+            <div key={summary.employeeId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '14px 16px', borderRadius: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--glass-border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '999px', background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <UserRound size={16} style={{ color: 'var(--accent-primary)' }} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800 }}>{summary.employeeName}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{summary.department} • {summary.pod}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'flex-end' }}>
+                <span className="badge badge-success">{summary.submittedCount} submissions</span>
+                <span className="badge badge-info">{summary.tasksCompleted} completed tasks</span>
+                <span className="badge badge-warning">{summary.blockers} blockers</span>
+                <span className="badge badge-secondary">Last: {summary.lastUpdate || '—'}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
     </div>

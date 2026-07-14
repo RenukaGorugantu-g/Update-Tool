@@ -140,6 +140,7 @@ const initialUsers: User[] = [
   { id: 'u-sandeep', name: 'Sandeep', email: 'sandeep@maplelearningsolutions.com', role: 'executive', department: 'Web Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0001', active: true, avatarColor: '#ec4899', password: 'executive' },
   { id: 'u-krishna', name: 'Krishna', email: 'krishna@maplelearningsolutions.com', role: 'executive', department: 'eLearning Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0002', active: true, avatarColor: '#6366f1', password: 'executive' },
   { id: 'u-rathish', name: 'Rathish', email: 'rathish@maplelearningsolutions.com', role: 'executive', department: 'Marketing & Sales Team', pod: 'UAE Pod', reportingManager: 'CEO', employeeId: 'MP-0003', active: true, avatarColor: '#f59e0b', password: 'executive' }
+  ,{ id: 'u-renuka', name: 'Renuka', email: 'renuka@maplelearningsolutions.com', role: 'employee', department: 'Client Success', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0004', active: true, avatarColor: '#7c3aed', password: 'executive' }
 ];
 
 const initialNotifications: SystemNotification[] = [
@@ -220,7 +221,15 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Persistent states from localStorage with seed data fallback
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem('pulse-users');
-    return saved ? JSON.parse(saved) : initialUsers;
+    const parsed = saved ? JSON.parse(saved) : null;
+    if (!parsed) return initialUsers;
+    // Merge seeded initial users if missing (preserve existing local overrides)
+    const lowerEmails = parsed.map((u: any) => String(u.email || '').toLowerCase());
+    const missing = initialUsers.filter(u => !lowerEmails.includes(u.email.toLowerCase()));
+    if (missing.length === 0) return parsed;
+    const merged = [...parsed, ...missing];
+    try { localStorage.setItem('pulse-users', JSON.stringify(merged)); } catch {}
+    return merged;
   });
 
   const [updates, setUpdates] = useState<UpdateRecord[]>(() => {

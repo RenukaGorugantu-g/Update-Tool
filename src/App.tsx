@@ -7,7 +7,7 @@ import { ExecutiveDashboard } from './components/ExecutiveDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { OrgChart } from './components/OrgChart';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
-import { IntegrationHub } from './components/IntegrationHub';
+import Reports from './components/Reports';
 import Checkins from './components/Checkins';
 import { Login } from './components/Login';
 import { DailyLanding } from './components/Dailybot/DailyLanding';
@@ -113,9 +113,6 @@ function App() {
       setActiveTab('dashboard');
     }
     if (activeTab === 'analytics' && role === 'employee') {
-      setActiveTab('dashboard');
-    }
-    if (activeTab === 'integrations' && role === 'employee') {
       setActiveTab('dashboard');
     }
   }, [currentUser, activeTab]);
@@ -226,8 +223,9 @@ function App() {
         return <OrgChart />;
       case 'analytics':
         return <AnalyticsDashboard />;
-      case 'integrations':
-        return <IntegrationHub />;
+      case 'reports':
+        return <Reports />;
+      
       case 'communications':
         return <WorkspaceHub />;
       case 'admin-panel':

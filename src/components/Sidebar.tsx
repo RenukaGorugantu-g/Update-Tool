@@ -27,14 +27,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     const items = [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'executive', 'employee'] },
       { id: 'checkins', label: 'Check-ins', icon: Activity, roles: ['admin', 'executive', 'employee'] },
+      { id: 'reports', label: 'Reports', icon: BarChart3, roles: ['admin', 'executive', 'employee'] },
       { id: 'communications', label: 'Mail & Chat Clients', icon: MessageSquare, roles: ['admin', 'executive', 'employee'] },
       { id: 'org', label: 'Team Structure', icon: Users, roles: ['admin', 'executive', 'employee'] }
     ];
 
     if (role === 'admin' || role === 'executive') {
       items.push(
-        { id: 'analytics', label: 'Reports & Analytics', icon: BarChart3, roles: ['admin', 'executive'] },
-        { id: 'integrations', label: 'Integration Hub', icon: Terminal, roles: ['admin', 'executive'] }
+        { id: 'analytics', label: 'Reports & Analytics', icon: BarChart3, roles: ['admin', 'executive'] }
       );
     }
 

@@ -89,7 +89,7 @@ export const Login: React.FC = () => {
           </div>
         </div>
 
-        <div className="glass-card" style={{ padding: '34px 32px', border: '1px solid var(--glass-border)', maxWidth: '460px' }}>
+            <div className="glass-card" style={{ padding: '34px 32px', border: '1px solid var(--glass-border)', maxWidth: '460px' }}>
           <div style={{ display: 'grid', gap: '18px' }}>
             <div>
               <h2 style={{ fontSize: '1.35rem', margin: 0, fontWeight: 800 }}>Sign in</h2>
@@ -133,3 +133,4 @@ export const Login: React.FC = () => {
     </div>
   );
 };
+export default Login;

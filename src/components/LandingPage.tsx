@@ -267,7 +267,7 @@ const LandingPage: React.FC = () => {
             </div>
             <div className="chat-thread">
               <div className="bubble bubble-bot">
-                Morning, Krishna 👋 What did you ship yesterday?
+                Morning, Team 👋 What did you ship yesterday?
               </div>
               <div className="bubble bubble-user delay-1">
                 Wrapped the audit report export and fixed the Brevo merge tags.

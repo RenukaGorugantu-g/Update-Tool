@@ -55,6 +55,19 @@ const seededClerkProfiles = [
     avatarColor: '#f59e0b',
     password: 'executive'
   }
+  ,{
+    email: 'renuka@maplelearningsolutions.com',
+    id: 'u-renuka',
+    name: 'Renuka',
+    role: 'employee' as const,
+    department: 'Client Success',
+    pod: 'India Pod' as const,
+    reportingManager: 'CEO',
+    employeeId: 'MP-0004',
+    active: true,
+    avatarColor: '#7c3aed',
+    password: 'executive'
+  }
 ];
 
 export const ClerkSessionBridge = () => {
@@ -69,15 +82,25 @@ export const ClerkSessionBridge = () => {
     const clerkEmployeeId = String(user.publicMetadata?.employeeId || `CL-${user.id.slice(0, 8).toUpperCase()}`);
 
     const seededProfile = seededClerkProfiles.find((candidate) => candidate.email.toLowerCase() === clerkEmail);
-    const existingMatch = users.find((candidate) => candidate.email.toLowerCase() === clerkEmail) || seededProfile;
+    const existingInUsers = users.find((candidate) => candidate.email.toLowerCase() === clerkEmail);
 
-    if (existingMatch) {
-      setCurrentUser(existingMatch);
+    // Prefer seeded profile role mappings (executive/admin) if available.
+    const profileToUse = seededProfile || existingInUsers;
+
+    if (profileToUse) {
+      setCurrentUser(profileToUse);
       setUsers((prev) => {
+        // If seededProfile exists and a different record exists in prev, replace it.
+        if (seededProfile) {
+          const has = prev.some(p => String(p.email || '').toLowerCase() === clerkEmail);
+          const replaced = prev.map(p => (String(p.email || '').toLowerCase() === clerkEmail ? seededProfile : p));
+          return has ? replaced : [...prev, seededProfile];
+        }
+        // Otherwise ensure existingInUsers present (it already is)
         if (prev.some((candidate) => candidate.email.toLowerCase() === clerkEmail)) {
           return prev;
         }
-        return [...prev, existingMatch];
+        return [...prev, profileToUse];
       });
       return;
     }
