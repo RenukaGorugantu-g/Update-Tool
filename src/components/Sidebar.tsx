@@ -4,7 +4,6 @@ import {
   LayoutDashboard, 
   Users, 
   BarChart3, 
-  Terminal, 
   Sun, 
   Moon, 
   Shield, 
