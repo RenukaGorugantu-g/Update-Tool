@@ -1,14 +1,16 @@
 import React from 'react';
+import { UserButton } from '@clerk/clerk-react';
 import { usePulse } from '../context/PulseContext';
-import { 
-  LayoutDashboard, 
-  Users, 
-  BarChart3, 
-  Sun, 
-  Moon, 
-  Shield, 
+import {
+  LayoutDashboard,
+  Users,
+  BarChart3,
+  Sun,
+  Moon,
+  Shield,
   Activity,
-  MessageSquare
+  MessageSquare,
+  CalendarCheck2
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -18,6 +20,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
   const { theme, setTheme, currentUser } = usePulse();
+  const clerkEnabled = Boolean((import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '').trim());
 
   if (!currentUser) return null;
 
@@ -28,12 +31,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
       { id: 'checkins', label: 'Check-ins', icon: Activity, roles: ['admin', 'executive', 'employee'] },
       { id: 'reports', label: 'Reports', icon: BarChart3, roles: ['admin', 'executive', 'employee'] },
       { id: 'communications', label: 'Mail & Chat Clients', icon: MessageSquare, roles: ['admin', 'executive', 'employee'] },
-      { id: 'org', label: 'Team Structure', icon: Users, roles: ['admin', 'executive', 'employee'] }
+      { id: 'org', label: 'Team Structure', icon: Users, roles: ['admin', 'executive', 'employee'] },
+      { id: 'attendance', label: 'Attendance', icon: CalendarCheck2, roles: ['admin', 'executive', 'employee'] }
     ];
 
-    if (role === 'admin' || role === 'executive') {
+    if (role === 'admin' || role === 'executive' || role === 'employer') {
       items.push(
-        { id: 'analytics', label: 'Reports & Analytics', icon: BarChart3, roles: ['admin', 'executive'] }
+        { id: 'analytics', label: 'Reports & Analytics', icon: BarChart3, roles: ['admin', 'executive', 'employer'] }
       );
     }
 
@@ -170,6 +174,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
             </p>
           </div>
         </div>
+
+        {clerkEnabled ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 0' }}>
+            <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: { width: '38px', height: '38px' } } }} />
+          </div>
+        ) : null}
 
         {/* Theme Settings Button Row */}
         <div style={{

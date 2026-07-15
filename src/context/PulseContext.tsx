@@ -5,7 +5,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'executive' | 'employee';
+  role: 'admin' | 'executive' | 'employer' | 'employee';
   department: string;
   pod: 'India Pod' | 'UAE Pod';
   reportingManager: string;
@@ -84,6 +84,28 @@ export interface SystemNotification {
   read: boolean;
 }
 
+export interface AttendanceRecord {
+  attendanceId: string;
+  userId: string;
+  employeeName?: string;
+  email?: string;
+  department?: string;
+  date: string;
+  loginTime?: string;
+  logoutTime?: string;
+  workingHours?: string;
+  idleTime?: string;
+  productiveHours?: string;
+  status: 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Auto Logout';
+  officeRemote?: 'Office' | 'Remote';
+  ipAddress?: string;
+  device?: string;
+  browser?: string;
+  os?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface ChatMessage {
   id: string;
   sender: 'user' | 'ai';
@@ -129,9 +151,12 @@ interface PulseContextType {
   setTemplates: React.Dispatch<React.SetStateAction<string[]>>;
   reminders: any[];
   setReminders: React.Dispatch<React.SetStateAction<any[]>>;
+  attendance: AttendanceRecord[];
+  setAttendance: React.Dispatch<React.SetStateAction<AttendanceRecord[]>>;
   persistTemplates: (nextTemplates: string[]) => Promise<string[] | null>;
   persistReminders: (nextReminders: any[]) => Promise<any[] | null>;
   trackEvent: (name: string, payload?: any) => void;
+  recordAttendanceEvent: (entry: Partial<AttendanceRecord>) => Promise<void>;
 }
 
 // --- Seed Data (Admin + Executives only, No Fake Data for Employees/Updates) ---
@@ -283,6 +308,11 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>(() => {
+    const saved = localStorage.getItem('pulse-attendance');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [isVoiceLoading, setIsVoiceLoading] = useState(false);
 
   // Sync to localStorage
@@ -329,6 +359,10 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem('pulse-reminders', JSON.stringify(reminders));
   }, [reminders]);
+
+  useEffect(() => {
+    localStorage.setItem('pulse-attendance', JSON.stringify(attendance));
+  }, [attendance]);
 
   // Sync users with backend
   useEffect(() => {
@@ -521,6 +555,72 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.warn('persist reminders failed', err);
     }
     return null;
+  };
+
+  const recordAttendanceEvent = async (entry: Partial<AttendanceRecord>) => {
+    if (!currentUser || !entry.date) return;
+    const timestamp = new Date().toISOString();
+    const attendanceEntry: AttendanceRecord = {
+      attendanceId: entry.attendanceId || `att-${currentUser.id}-${entry.date}`,
+      userId: entry.userId || currentUser.id,
+      employeeName: entry.employeeName || currentUser.name,
+      email: entry.email || currentUser.email,
+      department: entry.department || currentUser.department,
+      date: entry.date,
+      loginTime: entry.loginTime || '',
+      logoutTime: entry.logoutTime || '',
+      workingHours: entry.workingHours || '0h',
+      idleTime: entry.idleTime || '0m',
+      productiveHours: entry.productiveHours || '0h',
+      status: entry.status || 'Present',
+      officeRemote: entry.officeRemote || 'Remote',
+      ipAddress: entry.ipAddress || '',
+      device: entry.device || '',
+      browser: entry.browser || '',
+      os: entry.os || '',
+      createdAt: entry.createdAt || timestamp,
+      updatedAt: entry.updatedAt || timestamp
+    };
+
+    setAttendance((prev) => {
+      const existing = prev.find((item) => item.userId === attendanceEntry.userId && item.date === attendanceEntry.date);
+      const nextList = existing
+        ? prev.map((item) => item.attendanceId === existing.attendanceId
+          ? {
+              ...item,
+              ...attendanceEntry,
+              attendanceId: existing.attendanceId,
+              loginTime: attendanceEntry.loginTime || item.loginTime || '',
+              logoutTime: attendanceEntry.logoutTime || item.logoutTime || '',
+              workingHours: attendanceEntry.workingHours || item.workingHours || '0h',
+              idleTime: attendanceEntry.idleTime || item.idleTime || '0m',
+              productiveHours: attendanceEntry.productiveHours || item.productiveHours || '0h',
+              status: attendanceEntry.status || item.status || 'Present',
+              officeRemote: attendanceEntry.officeRemote || item.officeRemote || 'Remote',
+              ipAddress: attendanceEntry.ipAddress || item.ipAddress || '',
+              device: attendanceEntry.device || item.device || '',
+              browser: attendanceEntry.browser || item.browser || '',
+              os: attendanceEntry.os || item.os || '',
+              createdAt: item.createdAt || attendanceEntry.createdAt,
+              updatedAt: attendanceEntry.updatedAt || item.updatedAt
+            }
+          : item)
+        : [...prev, attendanceEntry];
+
+      localStorage.setItem('pulse-attendance', JSON.stringify(nextList));
+      return nextList;
+    });
+
+    if (!apiBase) return;
+    try {
+      await fetch(`${apiBase}/api/attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(attendanceEntry)
+      });
+    } catch (err) {
+      console.warn('attendance sync failed', err);
+    }
   };
 
   const trackEvent = (name: string, payload?: any) => {
@@ -1137,13 +1237,16 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setTemplates,
         reminders,
         setReminders,
+        attendance,
+        setAttendance,
         persistTemplates,
         persistReminders,
         mockEmails,
         setMockEmails,
         mockChatMessages,
         setMockChatMessages,
-        sendDirectChatMessage
+        sendDirectChatMessage,
+        recordAttendanceEvent
       }}
     >
       {children}

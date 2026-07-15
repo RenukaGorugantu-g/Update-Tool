@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { SignOutButton, UserButton } from '@clerk/clerk-react';
+import { SignOutButton } from '@clerk/clerk-react';
 import { usePulse } from './context/PulseContext';
 import { Sidebar } from './components/Sidebar';
 import { EmployeeDashboard } from './components/EmployeeDashboardRedesigned';
@@ -9,6 +9,7 @@ import { OrgChart } from './components/OrgChart';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import Reports from './components/Reports';
 import Checkins from './components/Checkins';
+import { AttendanceDashboard } from './components/AttendanceDashboard';
 import { Login } from './components/Login';
 import { DailyLanding } from './components/Dailybot/DailyLanding';
 import { WorkspaceHub } from './components/WorkspaceHub';
@@ -215,7 +216,7 @@ function App() {
     switch (activeTab) {
       case 'dashboard':
         if (currentUser.role === 'admin') return <AdminDashboard />;
-        if (currentUser.role === 'executive') return <ExecutiveDashboard />;
+        if (currentUser.role === 'executive' || currentUser.role === 'employer') return <ExecutiveDashboard />;
         return <EmployeeDashboard />;
       case 'checkins':
         return <Checkins />;
@@ -225,7 +226,8 @@ function App() {
         return <AnalyticsDashboard />;
       case 'reports':
         return <Reports />;
-      
+      case 'attendance':
+        return <AttendanceDashboard />;
       case 'communications':
         return <WorkspaceHub />;
       case 'admin-panel':
@@ -282,19 +284,13 @@ function App() {
           {/* Left: Active Role Greeting */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Active Role:</span>
-            <span className={`badge ${currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'executive' ? 'badge-indigo' : 'badge-success'}`} style={{ fontSize: '0.75rem', fontWeight: 800 }}>
-              {currentUser.role === 'admin' ? 'CEO / Admin' : currentUser.role === 'executive' ? 'Executive Manager' : 'Employee'}
+            <span className={`badge ${currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'executive' || currentUser.role === 'employer' ? 'badge-indigo' : 'badge-success'}`} style={{ fontSize: '0.75rem', fontWeight: 800 }}>
+              {currentUser.role === 'admin' ? 'CEO / Admin' : currentUser.role === 'executive' || currentUser.role === 'employer' ? 'Executive Manager' : 'Employee'}
             </span>
           </div>
 
           {/* Right: Persona Switcher & Notifications */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', position: 'relative' }}>
-            {clerkEnabled ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <UserButton afterSignOutUrl="/" />
-              </div>
-            ) : null}
-            
             {/* User Profile dropdown */}
             <div style={{ position: 'relative' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -390,8 +386,8 @@ function App() {
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Role:</span>
-                      <strong className={`badge ${currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'executive' ? 'badge-indigo' : 'badge-success'}`} style={{ padding: '2px 8px', fontSize: '0.65rem' }}>
-                        {currentUser.role === 'admin' ? 'CEO / Admin' : currentUser.role === 'executive' ? 'Executive' : 'Employee'}
+                      <strong className={`badge ${currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'executive' || currentUser.role === 'employer' ? 'badge-indigo' : 'badge-success'}`} style={{ padding: '2px 8px', fontSize: '0.65rem' }}>
+                        {currentUser.role === 'admin' ? 'CEO / Admin' : currentUser.role === 'executive' || currentUser.role === 'employer' ? 'Executive' : 'Employee'}
                       </strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>

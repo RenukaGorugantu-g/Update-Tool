@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { usePulse } from '../context/PulseContext';
 
+type ClerkRole = 'admin' | 'executive' | 'employer' | 'employee';
+
 const seededClerkProfiles = [
   {
     email: 'info@maplelearningsolutions.com',
@@ -80,27 +82,40 @@ export const ClerkSessionBridge = () => {
     const clerkEmail = (user.primaryEmailAddress?.emailAddress || '').trim().toLowerCase();
     const clerkName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || 'Clerk User';
     const clerkEmployeeId = String(user.publicMetadata?.employeeId || `CL-${user.id.slice(0, 8).toUpperCase()}`);
+    const metadataRole = String(user.publicMetadata?.role || user.publicMetadata?.userRole || '').trim().toLowerCase();
+    const normalizedMetadataRole = metadataRole === 'admin' || metadataRole === 'executive' || metadataRole === 'employer' || metadataRole === 'employee'
+      ? metadataRole as ClerkRole
+      : null;
 
     const seededProfile = seededClerkProfiles.find((candidate) => candidate.email.toLowerCase() === clerkEmail);
     const existingInUsers = users.find((candidate) => candidate.email.toLowerCase() === clerkEmail);
 
-    // Prefer seeded profile role mappings (executive/admin) if available.
+    const resolvedRole = (seededProfile?.role || existingInUsers?.role || normalizedMetadataRole || 'employee') as ClerkRole;
     const profileToUse = seededProfile || existingInUsers;
 
     if (profileToUse) {
-      setCurrentUser(profileToUse);
+      const normalizedProfile = {
+        ...profileToUse,
+        role: resolvedRole,
+        email: (profileToUse.email || clerkEmail || `${user.id}@clerk.local`).toLowerCase(),
+        department: profileToUse.department || 'General',
+        pod: profileToUse.pod || 'India Pod',
+        reportingManager: profileToUse.reportingManager || 'Manager',
+        employeeId: profileToUse.employeeId || clerkEmployeeId,
+        active: profileToUse.active ?? true,
+        avatarColor: profileToUse.avatarColor || '#10b981'
+      };
+      setCurrentUser(normalizedProfile);
       setUsers((prev) => {
-        // If seededProfile exists and a different record exists in prev, replace it.
         if (seededProfile) {
           const has = prev.some(p => String(p.email || '').toLowerCase() === clerkEmail);
-          const replaced = prev.map(p => (String(p.email || '').toLowerCase() === clerkEmail ? seededProfile : p));
-          return has ? replaced : [...prev, seededProfile];
+          const replaced = prev.map(p => (String(p.email || '').toLowerCase() === clerkEmail ? normalizedProfile : p));
+          return has ? replaced : [...prev, normalizedProfile];
         }
-        // Otherwise ensure existingInUsers present (it already is)
         if (prev.some((candidate) => candidate.email.toLowerCase() === clerkEmail)) {
-          return prev;
+          return prev.map((candidate) => candidate.email.toLowerCase() === clerkEmail ? normalizedProfile : candidate);
         }
-        return [...prev, profileToUse];
+        return [...prev, normalizedProfile];
       });
       return;
     }
@@ -109,7 +124,7 @@ export const ClerkSessionBridge = () => {
       id: user.id,
       name: clerkName,
       email: clerkEmail || `${user.id}@clerk.local`,
-      role: 'employee' as const,
+      role: resolvedRole,
       department: 'General',
       pod: 'India Pod' as const,
       reportingManager: 'Manager',

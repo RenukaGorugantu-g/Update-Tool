@@ -8,6 +8,7 @@ import { createUsersStore } from './usersStore.js';
 import { createTemplatesStore } from './templatesStore.js';
 import { createRemindersStore } from './remindersStore.js';
 import { createNotificationService } from './notificationService.js';
+import { createAttendanceStore } from './attendanceStore.js';
 
 loadServerEnv();
 
@@ -29,6 +30,7 @@ const updatesStore = createUpdatesStore();
 const fileUsersStore = createUsersStore();
 const templatesStore = createTemplatesStore();
 const remindersStore = createRemindersStore();
+const attendanceStore = createAttendanceStore();
 
 // File-backed users store. Seeds default users when users.json is empty.
 const initialUsers = [
@@ -456,6 +458,64 @@ app.post('/api/users', async (req, res) => {
   } catch (error) {
     console.error('save users error:', error);
     return res.status(500).json({ success: false, error: 'Unable to persist users.' });
+  }
+});
+
+// Attendance persistence API
+app.get('/api/attendance', async (req, res) => {
+  try {
+    const items = await attendanceStore.getAll();
+    return res.json({ success: true, attendance: items });
+  } catch (error) {
+    console.error('get attendance error:', error);
+    return res.status(500).json({ success: false, error: 'Unable to read attendance.' });
+  }
+});
+
+app.post('/api/attendance', async (req, res) => {
+  try {
+    const entry = req.body;
+    if (!entry || !entry.userId) {
+      return res.status(400).json({ success: false, error: 'attendance entry requires userId.' });
+    }
+    const saved = await attendanceStore.save(entry);
+    return res.json({ success: true, attendance: saved });
+  } catch (error) {
+    console.error('save attendance error:', error);
+    return res.status(500).json({ success: false, error: 'Unable to persist attendance.' });
+  }
+});
+
+app.get('/api/attendance/export', async (req, res) => {
+  try {
+    const items = await attendanceStore.getAll();
+    const header = 'Employee Name,Email,Department,Date,Login,Logout,Working Hours,Idle Time,Productive Hours,Attendance Status,Office/Remote,IP Address,Browser,Operating System,Device\n';
+    const rows = items.map((entry) => {
+      const values = [
+        entry.employeeName || '',
+        entry.email || '',
+        entry.department || '',
+        entry.date || '',
+        entry.loginTime || '',
+        entry.logoutTime || '',
+        entry.workingHours || '',
+        entry.idleTime || '',
+        entry.productiveHours || '',
+        entry.status || '',
+        entry.officeRemote || '',
+        entry.ipAddress || '',
+        entry.browser || '',
+        entry.os || '',
+        entry.device || ''
+      ];
+      return values.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(',');
+    }).join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="monthly-attendance-report.csv"');
+    return res.end(header + rows);
+  } catch (error) {
+    console.error('export attendance error:', error);
+    return res.status(500).json({ success: false, error: 'Unable to export attendance.' });
   }
 });
 
