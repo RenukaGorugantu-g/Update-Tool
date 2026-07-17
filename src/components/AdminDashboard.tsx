@@ -6,6 +6,8 @@ export const AdminDashboard: React.FC = () => {
   const { users, setUsers, toggleUserActiveStatus, resetSprintData, updates } = usePulse();
   const [isResetting, setIsResetting] = useState(false);
   const [assignments, setAssignments] = useState<Record<string, { role: string; department: string; pod: 'India Pod' | 'UAE Pod'; reportingManager: string }>>({});
+  const [manualEmail, setManualEmail] = useState('');
+  const [manualName, setManualName] = useState('');
 
   const apiBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '') || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://update-tool.onrender.com');
 
@@ -50,6 +52,43 @@ export const AdminDashboard: React.FC = () => {
       persistUsersToBackend(nextUsers);
       return nextUsers;
     });
+    setAssignments((prev) => ({ ...prev, [targetUser.id]: { role: nextUser.role, department: nextUser.department, pod: nextUser.pod, reportingManager: nextUser.reportingManager } }));
+  };
+
+  const addRosterProfile = (event: React.FormEvent) => {
+    event.preventDefault();
+    const normalizedEmail = manualEmail.trim().toLowerCase();
+    if (!normalizedEmail) return;
+
+    const normalizedName = (manualName || normalizedEmail.split('@')[0]).trim();
+    const derivedId = `user_${normalizedEmail.replace(/[^a-z0-9]+/g, '_')}`;
+    const existing = users.find((candidate) => String(candidate.email || '').trim().toLowerCase() === normalizedEmail || String(candidate.id || '').trim().toLowerCase() === derivedId.toLowerCase());
+
+    const nextUser = {
+      id: existing?.id || derivedId,
+      name: normalizedName || normalizedEmail.split('@')[0],
+      email: normalizedEmail,
+      role: 'employee' as const,
+      department: 'General',
+      pod: 'India Pod' as const,
+      reportingManager: 'Manager',
+      employeeId: existing?.employeeId || `CL-${normalizedEmail.split('@')[0].slice(0, 6).toUpperCase()}`,
+      active: existing?.active ?? true,
+      avatarColor: existing?.avatarColor || '#10b981',
+      password: existing?.password || 'password'
+    };
+
+    setUsers((prev) => {
+      const nextUsers = existing
+        ? prev.map((candidate) => String(candidate.email || '').trim().toLowerCase() === normalizedEmail || String(candidate.id || '').trim().toLowerCase() === derivedId.toLowerCase() ? nextUser : candidate)
+        : [...prev, nextUser];
+      persistUsersToBackend(nextUsers);
+      setAssignments((current) => ({ ...current, [nextUser.id]: { role: nextUser.role, department: nextUser.department, pod: nextUser.pod, reportingManager: nextUser.reportingManager } }));
+      return nextUsers;
+    });
+
+    setManualEmail('');
+    setManualName('');
   };
 
   const rosterUsers = useMemo(() => {
@@ -153,6 +192,20 @@ export const AdminDashboard: React.FC = () => {
               {isResetting ? 'Resetting…' : 'Reset sprint data'}
             </button>
           </div>
+
+          <form onSubmit={addRosterProfile} style={{ display: 'grid', gap: '10px', padding: '10px 0 2px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+              <label style={{ display: 'grid', gap: '6px' }}>
+                <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Clerk email</span>
+                <input type="email" value={manualEmail} onChange={(event) => setManualEmail(event.target.value)} placeholder="name@company.com" style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+              </label>
+              <label style={{ display: 'grid', gap: '6px' }}>
+                <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Display name</span>
+                <input type="text" value={manualName} onChange={(event) => setManualName(event.target.value)} placeholder="Optional name" style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+              </label>
+              <button type="submit" className="btn btn-primary" style={{ padding: '8px 12px' }}>Add to roster</button>
+            </div>
+          </form>
 
           <div style={{ display: 'grid', gap: '10px' }}>
             {rosterUsers.length === 0 ? (
