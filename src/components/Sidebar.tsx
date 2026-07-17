@@ -1,5 +1,4 @@
 import React from 'react';
-import { UserButton } from '@clerk/clerk-react';
 import { usePulse } from '../context/PulseContext';
 import {
   LayoutDashboard,
@@ -20,7 +19,6 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
   const { theme, setTheme, currentUser } = usePulse();
-  const clerkEnabled = Boolean((import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '').trim());
 
   if (!currentUser) return null;
 
@@ -174,12 +172,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
             </p>
           </div>
         </div>
-
-        {clerkEnabled ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 0' }}>
-            <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: { width: '38px', height: '38px' } } }} />
-          </div>
-        ) : null}
 
         {/* Theme Settings Button Row */}
         <div style={{

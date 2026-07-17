@@ -1,24 +1,65 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { usePulse } from '../context/PulseContext';
-import { Plus, UserMinus, UserCheck, ShieldAlert, FileSpreadsheet, RefreshCw } from 'lucide-react';
+import { UserMinus, UserCheck, ShieldAlert, FileSpreadsheet, RefreshCw, Save } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
-  const { users, createNewUser, toggleUserActiveStatus, resetSprintData, updates } = usePulse();
-
-  // Create User Form State
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'employee' | 'executive' | 'admin'>('employee');
-  const [department, setDepartment] = useState('Development Team');
-  const [pod, setPod] = useState<'India Pod' | 'UAE Pod'>('India Pod');
-  const [reportingManager, setReportingManager] = useState('Marcus Thompson');
-  
-  // Auto-calculated state for preview
-  const [generatedEmpId, setGeneratedEmpId] = useState('');
-  const [tempPassword, setTempPassword] = useState('');
-  const [formSuccess, setFormSuccess] = useState(false);
+  const { users, setUsers, toggleUserActiveStatus, resetSprintData, updates } = usePulse();
   const [isResetting, setIsResetting] = useState(false);
-  const [lastCreatedCredentials, setLastCreatedCredentials] = useState<{ email: string; employeeId: string; password: string } | null>(null);
+  const [assignments, setAssignments] = useState<Record<string, { role: string; department: string; pod: 'India Pod' | 'UAE Pod'; reportingManager: string }>>({});
+
+  const apiBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '') || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://update-tool.onrender.com');
+
+  useEffect(() => {
+    const nextAssignments = users.reduce<Record<string, { role: string; department: string; pod: 'India Pod' | 'UAE Pod'; reportingManager: string }>>((acc, user) => {
+      acc[user.id] = {
+        role: user.role || 'employee',
+        department: user.department || 'General',
+        pod: user.pod || 'India Pod',
+        reportingManager: user.reportingManager || 'Manager'
+      };
+      return acc;
+    }, {});
+    setAssignments((prev) => ({ ...prev, ...nextAssignments }));
+  }, [users]);
+
+  const persistUsersToBackend = (nextUsers: typeof users) => {
+    localStorage.setItem('pulse-users', JSON.stringify(nextUsers));
+    if (!apiBase) return;
+    void fetch(`${apiBase}/api/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(nextUsers)
+    }).catch((error) => console.warn('Unable to sync admin roster updates to backend:', error));
+  };
+
+  const saveUserAssignment = (targetUser: typeof users[number]) => {
+    const draft = assignments[targetUser.id];
+    if (!draft) return;
+    const nextUser = {
+      ...targetUser,
+      role: draft.role as typeof targetUser.role,
+      department: draft.department || 'General',
+      pod: draft.pod || 'India Pod',
+      reportingManager: draft.reportingManager || 'Manager',
+      active: targetUser.active ?? true,
+      avatarColor: targetUser.avatarColor || '#6366f1',
+      password: targetUser.password || 'password'
+    };
+    setUsers((prev) => {
+      const nextUsers = prev.map((user) => (String(user.id) === String(targetUser.id) ? nextUser : user));
+      persistUsersToBackend(nextUsers);
+      return nextUsers;
+    });
+  };
+
+  const rosterUsers = useMemo(() => {
+    return [...users].sort((a, b) => a.name.localeCompare(b.name));
+  }, [users]);
+
+  const clerkSignupUsers = useMemo(() => rosterUsers.filter((user) => {
+    const id = String(user.id || '').trim();
+    return id.startsWith('user_') || id.startsWith('user') || (!id.startsWith('u-') && !id.startsWith('emp-') && !id.startsWith('MP-') && !id.startsWith('CL-'));
+  }), [rosterUsers]);
 
   // Filter list
   const executives = users.filter(u => u.role === 'executive' || u.role === 'admin');
@@ -30,37 +71,6 @@ export const AdminDashboard: React.FC = () => {
   const totalEmployeesActive = users.filter(u => u.role === 'employee' && u.active).length || 1;
   const completionPct = Math.round((submittedToday / totalEmployeesActive) * 100);
   const activeBlockers = updates.filter(u => u.blockers && u.blockers.length > 0 && u.blockers[0].trim() !== '').length;
-
-  const handleAddUser = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name || !email || !generatedEmpId || !tempPassword) return;
-
-    createNewUser({
-      name,
-      email,
-      role,
-      department,
-      pod,
-      reportingManager,
-      employeeId: generatedEmpId,
-      password: tempPassword
-    });
-
-    setLastCreatedCredentials({
-      email: email.trim().toLowerCase(),
-      employeeId: generatedEmpId.trim(),
-      password: tempPassword
-    });
-    setFormSuccess(true);
-    setName('');
-    setEmail('');
-    setGeneratedEmpId('');
-    setTempPassword('');
-    
-    setTimeout(() => {
-      setFormSuccess(false);
-    }, 4500);
-  };
 
   const handleResetSprintData = async () => {
     if (!window.confirm('Clear all sprint updates and start a fresh sprint?')) return;
@@ -125,195 +135,85 @@ export const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Last-created credentials & debug users (dev only) */}
-      {lastCreatedCredentials && (
-        <div className="glass-card" style={{ padding: '14px', marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Last created user</div>
-            <div style={{ fontWeight: 800, marginTop: 6 }}>{lastCreatedCredentials.email}</div>
-            <div style={{ color: 'var(--text-secondary)', marginTop: 4 }}>Password: <span style={{ fontFamily: 'monospace' }}>{lastCreatedCredentials.password}</span></div>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn" onClick={() => { navigator.clipboard?.writeText(lastCreatedCredentials.email + '\n' + lastCreatedCredentials.password); }}>Copy creds</button>
-            <button className="btn btn-secondary" onClick={() => { setLastCreatedCredentials(null); }}>Dismiss</button>
-          </div>
-        </div>
-      )}
-
-      <details style={{ marginBottom: 18 }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Dev: View stored users</summary>
-        <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
-          {users.map(u => (
-            <div key={u.id} className="glass-card" style={{ padding: 10, display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-              <div>
-                <div style={{ fontWeight: 700 }}>{u.name} <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>({u.role})</span></div>
-                <div style={{ color: 'var(--text-secondary)' }}>{u.email} • {u.employeeId}</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{u.password}</div>
-                <div style={{ color: u.active ? 'var(--accent-emerald)' : 'var(--text-muted)', marginTop: 6 }}>{u.active ? 'Active' : 'Disabled'}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </details>
-
       <div className="dashboard-grid">
-        
-        {/* Creation Form Card */}
-        <form onSubmit={handleAddUser} className="glass-card" style={{ padding: '24px', alignSelf: 'start' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Plus size={18} style={{ color: 'var(--accent-primary)' }} />
-            <span>Create Employee Account</span>
-          </h3>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Clerk signups and roster assignment card */}
+        <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <label htmlFor="name-input">Full Name</label>
-              <input
-                id="name-input"
-                type="text"
-                placeholder="E.g., John Doe"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  // Generate credentials on writing
-                  const randomDigits = Math.floor(1000 + Math.random() * 9000);
-                  if (!generatedEmpId && e.target.value.trim()) {
-                    setGeneratedEmpId(`MP-${randomDigits}`);
-                  }
-                  if (!tempPassword && e.target.value.trim()) {
-                    const cleanName = e.target.value.replace(/\s+/g, '');
-                    setTempPassword(`${cleanName.substring(0, 4)}@Pulse${new Date().getFullYear()}!`);
-                  }
-                }}
-                required
-              />
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FileSpreadsheet size={18} style={{ color: 'var(--accent-primary)' }} />
+                <span>Clerk signups & roster</span>
+              </h3>
+              <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                Assign a team, pod, and reporting lead to each signed-up person so employer filters can surface their updates.
+              </p>
             </div>
-
-            <div>
-              <label htmlFor="email-input">Company Email</label>
-              <input
-                id="email-input"
-                type="email"
-                placeholder="john.doe@maplepulse.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label htmlFor="empid-input">Employee ID</label>
-                <input
-                  id="empid-input"
-                  type="text"
-                  placeholder="e.g. MP-1234"
-                  value={generatedEmpId}
-                  onChange={(e) => setGeneratedEmpId(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="password-input">Temporary Password</label>
-                <input
-                  id="password-input"
-                  type="text"
-                  placeholder="Temporary Password"
-                  value={tempPassword}
-                  onChange={(e) => setTempPassword(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label htmlFor="role-select">Access Role</label>
-                <select
-                  id="role-select"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as any)}
-                >
-                  <option value="employee">Employee</option>
-                  <option value="executive">Executive Manager</option>
-                  <option value="admin">CEO / Admin</option>
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="pod-select">Office Pod</label>
-                <select
-                  id="pod-select"
-                  value={pod}
-                  onChange={(e) => setPod(e.target.value as any)}
-                >
-                  <option value="India Pod">India Pod</option>
-                  <option value="UAE Pod">UAE Pod</option>
-                </select>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label htmlFor="dept-select">Department</label>
-                <select
-                  id="dept-select"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                >
-                  <option value="Development Team">Development</option>
-                  <option value="Design Team">Design</option>
-                  <option value="Marketing Team">Marketing</option>
-                  <option value="Sales">Sales</option>
-                  <option value="Client Success">Client Success</option>
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="manager-select">Reporting Manager</label>
-                <select
-                  id="manager-select"
-                  value={reportingManager}
-                  onChange={(e) => setReportingManager(e.target.value)}
-                >
-                  {executives.map(exec => (
-                    <option key={exec.id} value={exec.name}>{exec.name} ({exec.department})</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Generated Details Preview Box Removed */}
-
-            {formSuccess && (
-              <div style={{
-                fontSize: '0.8rem',
-                color: 'var(--accent-emerald)',
-                fontWeight: 700,
-                textAlign: 'center',
-                background: 'var(--accent-emerald-light)',
-                padding: '8px',
-                borderRadius: '8px'
-              }}>
-                <div>Account created and synchronized to organizational charts.</div>
-                {lastCreatedCredentials && (
-                  <div style={{ marginTop: '6px', color: 'var(--text-primary)', fontWeight: 600, lineHeight: 1.5 }}>
-                    <div>Email: {lastCreatedCredentials.email}</div>
-                    <div>ID: {lastCreatedCredentials.employeeId}</div>
-                    <div>Password: {lastCreatedCredentials.password}</div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <button type="submit" className="btn btn-primary" style={{ marginTop: '6px' }}>
-              Create Account
+            <button type="button" className="btn btn-secondary" onClick={handleResetSprintData} disabled={isResetting} style={{ padding: '8px 12px', fontSize: '0.75rem' }}>
+              <RefreshCw size={14} style={{ marginRight: '6px' }} />
+              {isResetting ? 'Resetting…' : 'Reset sprint data'}
             </button>
           </div>
-        </form>
+
+          <div style={{ display: 'grid', gap: '10px' }}>
+            {clerkSignupUsers.length === 0 ? (
+              <div className="glass-card" style={{ padding: '12px', color: 'var(--text-secondary)' }}>No Clerk signups have been synced yet.</div>
+            ) : clerkSignupUsers.map((user) => {
+              const draft = assignments[user.id] || {
+                role: user.role || 'employee',
+                department: user.department || 'General',
+                pod: user.pod || 'India Pod',
+                reportingManager: user.reportingManager || 'Manager'
+              };
+              const isClerkUser = String(user.id || '').trim().startsWith('user_') || String(user.id || '').trim().startsWith('user');
+              return (
+                <div key={user.id} className="glass-card" style={{ padding: '14px', display: 'grid', gap: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <div>
+                      <div style={{ fontWeight: 800 }}>{user.name}</div>
+                      <div style={{ fontSize: '0.77rem', color: 'var(--text-muted)' }}>{user.email} • {user.employeeId || 'No employee ID'}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {isClerkUser ? <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '4px 8px', borderRadius: '999px', background: 'rgba(16, 185, 129, 0.14)', color: '#34d399' }}>Clerk signup</span> : null}
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '4px 8px', borderRadius: '999px', background: 'rgba(59, 130, 246, 0.14)', color: '#60a5fa' }}>{user.role}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+                    <label style={{ display: 'grid', gap: '6px' }}>
+                      <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Role</span>
+                      <select value={draft.role} onChange={(event) => setAssignments((prev) => ({ ...prev, [user.id]: { ...draft, role: event.target.value } }))} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
+                        <option value="employee">Employee</option>
+                        <option value="executive">Executive</option>
+                        <option value="employer">Employer</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </label>
+                    <label style={{ display: 'grid', gap: '6px' }}>
+                      <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Team / Department</span>
+                      <input type="text" value={draft.department} onChange={(event) => setAssignments((prev) => ({ ...prev, [user.id]: { ...draft, department: event.target.value } }))} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+                    </label>
+                    <label style={{ display: 'grid', gap: '6px' }}>
+                      <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Pod</span>
+                      <select value={draft.pod} onChange={(event) => setAssignments((prev) => ({ ...prev, [user.id]: { ...draft, pod: event.target.value as 'India Pod' | 'UAE Pod' } }))} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
+                        <option value="India Pod">India Pod</option>
+                        <option value="UAE Pod">UAE Pod</option>
+                      </select>
+                    </label>
+                    <label style={{ display: 'grid', gap: '6px' }}>
+                      <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Reporting lead</span>
+                      <input type="text" value={draft.reportingManager} onChange={(event) => setAssignments((prev) => ({ ...prev, [user.id]: { ...draft, reportingManager: event.target.value } }))} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+                    </label>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{updates.filter((update) => update.employeeId === user.id).length} update(s) logged</div>
+                    <button type="button" className="btn" onClick={() => saveUserAssignment(user)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <Save size={14} /> Save assignment
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* User Accounts Management list card */}
         <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
