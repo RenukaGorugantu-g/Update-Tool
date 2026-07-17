@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { usePulse } from '../context/PulseContext';
-import { CalendarDays, Clock3, Download, LogIn, LogOut, MapPin, Monitor, Search, Sparkles, Users } from 'lucide-react';
+import { CalendarDays, Clock3, Download, LogIn, LogOut, MapPin, Monitor, Search, Sparkles, Users, Filter, UserRound } from 'lucide-react';
 
 const statusStyles: Record<string, { bg: string; color: string }> = {
   Present: { bg: 'rgba(34, 197, 94, 0.14)', color: '#34d399' },
@@ -16,7 +16,6 @@ export const AttendanceDashboard: React.FC = () => {
   const apiBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '') || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
   const isEmployee = role === 'employee';
   const canViewTeamAttendance = role === 'admin' || role === 'executive' || role === 'employer';
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
@@ -27,23 +26,6 @@ export const AttendanceDashboard: React.FC = () => {
   const [sessionLocation, setSessionLocation] = useState<'Office' | 'Remote'>('Remote');
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null);
   const [attendanceMessage, setAttendanceMessage] = useState('Ready to clock in');
-
-  const today = new Date().toISOString().split('T')[0];
-
-  const latestAttendanceDate = useMemo(() => {
-    const dates = attendance
-      .map((entry) => entry.date)
-      .filter((value): value is string => Boolean(value))
-      .sort((a, b) => b.localeCompare(a));
-    return dates[0] || today;
-  }, [attendance, today]);
-
-  useEffect(() => {
-    if (!attendance.length) return;
-    if (selectedDate === today && !attendance.some((entry) => entry.date === selectedDate)) {
-      setSelectedDate(latestAttendanceDate);
-    }
-  }, [attendance, latestAttendanceDate, selectedDate, today]);
 
   useEffect(() => {
     if (!sessionActive) return;
@@ -151,44 +133,18 @@ export const AttendanceDashboard: React.FC = () => {
     return source
       .filter((entry) => {
         const matchesEmployee = !canViewTeamAttendance || selectedEmployeeId === 'all' || matchesEmployeeSelection(entry, selectedEmployeeId);
-        const matchesDate = !selectedDate || entry.date === selectedDate;
         const matchesStatus = selectedStatus === 'All' || entry.status === selectedStatus;
         const haystack = `${entry.employeeName || ''} ${entry.department || ''} ${entry.email || ''}`.toLowerCase();
         const matchesSearch = !searchTerm || haystack.includes(searchTerm.toLowerCase());
-        return matchesEmployee && matchesDate && matchesStatus && matchesSearch;
+        return matchesEmployee && matchesStatus && matchesSearch;
       })
       .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.loginTime || '').localeCompare(a.loginTime || ''));
-  }, [attendance, canViewTeamAttendance, employeeEntries, isEmployee, searchTerm, selectedDate, selectedStatus, selectedEmployeeId]);
+  }, [attendance, canViewTeamAttendance, employeeEntries, isEmployee, searchTerm, selectedStatus, selectedEmployeeId]);
 
-  const selectedDateEntries = useMemo(() => visibleEntries.filter((entry) => entry.date === selectedDate), [selectedDate, visibleEntries]);
-  const presentCount = selectedDateEntries.filter((entry) => ['Present', 'Late', 'Half Day', 'Auto Logout'].includes(entry.status)).length;
-  const absentCount = Math.max(0, users.filter((user) => user.role === 'employee' && user.active).length - presentCount);
-  const officeCount = selectedDateEntries.filter((entry) => entry.officeRemote === 'Office').length;
-  const remoteCount = selectedDateEntries.filter((entry) => entry.officeRemote === 'Remote').length;
-  const weeklyMinutes = useMemo(() => {
-    const selected = new Date(selectedDate || today);
-    const start = new Date(selected);
-    start.setDate(start.getDate() - 6);
-    return attendance.filter((entry) => {
-      if (!entry.date) return false;
-      const entryDate = new Date(entry.date);
-      return entryDate >= start && entryDate <= selected;
-    }).reduce((sum, entry) => sum + parseMinutes(entry.workingHours), 0);
-  }, [attendance, selectedDate, today]);
-  const weeklyLabel = `${Math.floor(weeklyMinutes / 60)}h ${weeklyMinutes % 60}m`;
-
-  const weekDays = useMemo(() => {
-    const anchor = new Date(selectedDate || today);
-    const days = [] as Array<{ label: string; value: string; entries: any[] }>;
-    for (let index = 6; index >= 0; index -= 1) {
-      const date = new Date(anchor);
-      date.setDate(anchor.getDate() - index);
-      const value = date.toISOString().split('T')[0];
-      const dayEntries = (isEmployee ? employeeEntries : attendance).filter((entry) => entry.date === value);
-      days.push({ label: date.toLocaleDateString('en', { weekday: 'short' }), value, entries: dayEntries });
-    }
-    return days;
-  }, [attendance, employeeEntries, isEmployee, selectedDate, today]);
+  const presentCount = visibleEntries.filter((entry) => ['Present', 'Late', 'Half Day', 'Auto Logout'].includes(entry.status)).length;
+  const absentCount = visibleEntries.filter((entry) => entry.status === 'Absent').length;
+  const officeCount = visibleEntries.filter((entry) => entry.officeRemote === 'Office').length;
+  const remoteCount = visibleEntries.filter((entry) => entry.officeRemote === 'Remote').length;
 
   const employeeSummary = useMemo(() => {
     const groups: Record<string, any> = {};
@@ -243,7 +199,7 @@ export const AttendanceDashboard: React.FC = () => {
   };
 
   const exportAttendanceForUser = async (entry: any) => {
-    const rows = attendance.filter((item) => item.userId === entry.userId).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const rows = attendance.filter((item) => item.userId === entry.userId || (entry.email && item.email === entry.email)).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     const filename = `${(entry.employeeName || entry.userId || 'employee').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-attendance`;
     if (apiBase) {
       try {
@@ -272,10 +228,10 @@ export const AttendanceDashboard: React.FC = () => {
 
   const exportSelectedEmployee = async () => {
     const rows = selectedEmployeeId === 'all'
-      ? visibleEntries.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+      ? attendance.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''))
       : attendance.filter((item) => matchesEmployeeSelection(item, selectedEmployeeId)).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     const filename = selectedEmployeeId === 'all'
-      ? `attendance-logs-${selectedDate || today}`
+      ? `attendance-logs-all-history`
       : `${(employeeOptions.find((option) => option.value === selectedEmployeeId)?.label || 'employee').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-attendance`;
     if (apiBase) {
       try {
@@ -284,7 +240,6 @@ export const AttendanceDashboard: React.FC = () => {
           const selectedOption = employeeOptions.find((option) => option.value === selectedEmployeeId);
           params.set('userId', selectedOption?.value || selectedEmployeeId);
         }
-        if (selectedDate) params.set('date', selectedDate);
         const response = await fetch(`${apiBase}/api/attendance/export${params.toString() ? `?${params.toString()}` : ''}`);
         if (response.ok) {
           const blob = await response.blob();
@@ -427,20 +382,16 @@ export const AttendanceDashboard: React.FC = () => {
         <section className="glass-card" style={{ padding: '16px', display: 'grid', gap: '12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <div>
-              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Employee view</div>
-              <div style={{ marginTop: '6px', fontWeight: 700 }}>Open one employee at a time</div>
+              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Team filters</div>
+              <div style={{ marginTop: '6px', fontWeight: 700 }}>Focus on one employee or view the full roster</div>
             </div>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
               <label style={{ display: 'grid', gap: '6px', minWidth: '220px' }}>
                 <span style={{ fontSize: '0.74rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Employee</span>
                 <select value={selectedEmployeeId} onChange={(event) => setSelectedEmployeeId(event.target.value)} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
                   <option value="all">All employees</option>
                   {employeeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-              </label>
-              <label style={{ display: 'grid', gap: '6px', minWidth: '180px' }}>
-                <span style={{ fontSize: '0.74rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Date</span>
-                <input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
               </label>
               <label style={{ display: 'grid', gap: '6px', minWidth: '180px' }}>
                 <span style={{ fontSize: '0.74rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Status</span>
@@ -456,35 +407,12 @@ export const AttendanceDashboard: React.FC = () => {
       <section className="glass-card" style={{ padding: '16px', display: 'grid', gap: '14px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Weekly view</div>
-            <div style={{ marginTop: '6px', fontWeight: 700 }}>Last 7 days</div>
-          </div>
-          <div style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>{weeklyLabel}</div>
-        </div>
-        <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
-          {weekDays.map((day) => {
-            const isSelected = day.value === selectedDate;
-            const rowCount = day.entries.length;
-            return (
-              <div key={day.value} onClick={() => setSelectedDate(day.value)} style={{ padding: '10px', borderRadius: '12px', border: isSelected ? '1px solid var(--accent-primary)' : '1px solid var(--glass-border)', background: isSelected ? 'rgba(var(--accent-primary-rgb), 0.12)' : 'var(--bg-secondary)', cursor: 'pointer' }}>
-                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{day.label}</div>
-                <div style={{ marginTop: '6px', fontWeight: 800 }}>{day.value.slice(5)}</div>
-                <div style={{ marginTop: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{rowCount} row{rowCount === 1 ? '' : 's'}</div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="glass-card" style={{ padding: '16px', display: 'grid', gap: '14px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <div>
-            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Summary</div>
-            <div style={{ marginTop: '6px', fontWeight: 700 }}>{isEmployee ? 'Personal attendance overview' : 'Team attendance overview'}</div>
+            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>History</div>
+            <div style={{ marginTop: '6px', fontWeight: 700 }}>{isEmployee ? 'All of your clock-in records' : 'All attendance history for the selected employee'}</div>
           </div>
           {canViewTeamAttendance ? (
             <label style={{ display: 'grid', gap: '6px', minWidth: '260px' }}>
-              <span style={{ fontSize: '0.74rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Search within selected employee</span>
+              <span style={{ fontSize: '0.74rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Search employees</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)' }}>
                 <Search size={14} />
                 <input type="text" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search by name or department" style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text-primary)' }} />
@@ -494,8 +422,8 @@ export const AttendanceDashboard: React.FC = () => {
         </div>
         <div className="metrics-row">
           <div className="glass-card" style={{ padding: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}><CalendarDays size={16} /><span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Selected day</span></div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{presentCount}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}><CalendarDays size={16} /><span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Rows</span></div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{visibleEntries.length}</h3>
           </div>
           <div className="glass-card" style={{ padding: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}><Users size={16} /><span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Present</span></div>
@@ -527,9 +455,12 @@ export const AttendanceDashboard: React.FC = () => {
       </section>
 
       <section className="glass-card" style={{ padding: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Clock3 size={16} /><span style={{ fontWeight: 800 }}>{isEmployee ? 'My attendance history' : 'Attendance logs'}</span></div>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Showing {visibleEntries.length} row(s)</div>
+          <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Filter size={13} /> {visibleEntries.length} row(s)</span>
+            {canViewTeamAttendance ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><UserRound size={13} /> {employeeSummary.length} people</span> : null}
+          </div>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -548,7 +479,7 @@ export const AttendanceDashboard: React.FC = () => {
             <tbody>
               {visibleEntries.length === 0 ? (
                 <tr><td colSpan={isEmployee ? 7 : 8} style={{ padding: '14px 8px', color: 'var(--text-secondary)' }}>
-                  {attendance.length > 0 ? `No attendance rows found for ${selectedDate || 'the selected day'}.` : 'No attendance rows have been captured yet for this account.'}
+                  {attendance.length > 0 ? 'No attendance rows matched the current filters for this employee.' : 'No attendance rows have been captured yet for this account.'}
                 </td></tr>
               ) : visibleEntries.map((entry) => {
                 const chip = statusStyles[entry.status || 'Present'] || statusStyles.Present;
