@@ -239,6 +239,39 @@ const getApiBase = () => {
   return 'https://update-tool.onrender.com';
 };
 
+const mergeUsersLists = (existingUsers: User[], incomingUsers: User[]) => {
+  const merged = [...existingUsers];
+  incomingUsers.forEach((incomingUser) => {
+    const incomingEmail = String(incomingUser.email || '').trim().toLowerCase();
+    const incomingId = String(incomingUser.id || '').trim().toLowerCase();
+    const existingIndex = merged.findIndex((candidate) => {
+      const candidateEmail = String(candidate.email || '').trim().toLowerCase();
+      const candidateId = String(candidate.id || '').trim().toLowerCase();
+      return candidateEmail === incomingEmail || candidateId === incomingId;
+    });
+
+    if (existingIndex >= 0) {
+      merged[existingIndex] = {
+        ...merged[existingIndex],
+        ...incomingUser,
+        id: merged[existingIndex].id || incomingUser.id,
+        email: (incomingUser.email || merged[existingIndex].email || '').toLowerCase(),
+        department: incomingUser.department || merged[existingIndex].department || 'General',
+        pod: incomingUser.pod || merged[existingIndex].pod || 'India Pod',
+        reportingManager: incomingUser.reportingManager || merged[existingIndex].reportingManager || 'Manager',
+        active: incomingUser.active ?? merged[existingIndex].active ?? true,
+        avatarColor: incomingUser.avatarColor || merged[existingIndex].avatarColor || '#10b981',
+        password: incomingUser.password || merged[existingIndex].password || 'password'
+      };
+      return;
+    }
+
+    merged.push(incomingUser);
+  });
+
+  return merged;
+};
+
 const mergeAttendanceRecords = (existing: AttendanceRecord[], incoming: AttendanceRecord[]) => {
   const byKey = new Map<string, AttendanceRecord>();
   const merged = [...(existing || []), ...(incoming || [])]
@@ -483,13 +516,13 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       if (json?.success && Array.isArray(json.users)) {
-        // Ensure we use the server-normalized users to avoid stale/local/backend drift
+        // Ensure we preserve any local edits while still applying server-normalized users.
         try {
-          setUsers(json.users);
+          setUsers(prev => mergeUsersLists(prev, json.users));
         } catch (e) {
           // swallow setState errors in persistence
         }
-        localStorage.setItem('pulse-users', JSON.stringify(json.users));
+        localStorage.setItem('pulse-users', JSON.stringify(mergeUsersLists(nextUsers, json.users)));
         return json.users;
       }
 
@@ -508,8 +541,8 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const resp = await fetch(`${apiBase}/api/users`);
         const json = await resp.json().catch(() => null);
         if (json?.success && Array.isArray(json.users) && json.users.length > 0) {
-          setUsers(json.users);
-          localStorage.setItem('pulse-users', JSON.stringify(json.users));
+          setUsers(prev => mergeUsersLists(prev, json.users));
+          localStorage.setItem('pulse-users', JSON.stringify(mergeUsersLists(users, json.users)));
         }
       } catch (error) {
         console.warn('Unable to load users from backend, using local data:', error);

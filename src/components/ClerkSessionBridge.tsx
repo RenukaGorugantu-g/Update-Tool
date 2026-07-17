@@ -72,6 +72,37 @@ const seededClerkProfiles = [
   }
 ];
 
+const upsertUserIntoList = (prevUsers: ReturnType<typeof usePulse>['users'], incomingUser: ReturnType<typeof usePulse>['users'][number]) => {
+  const normalizedEmail = String(incomingUser.email || '').trim().toLowerCase();
+  const normalizedId = String(incomingUser.id || '').trim().toLowerCase();
+  const existingIndex = prevUsers.findIndex((candidate) => {
+    const candidateEmail = String(candidate.email || '').trim().toLowerCase();
+    const candidateId = String(candidate.id || '').trim().toLowerCase();
+    return candidateEmail === normalizedEmail || candidateId === normalizedId;
+  });
+
+  if (existingIndex >= 0) {
+    const existing = prevUsers[existingIndex];
+    const mergedUser = {
+      ...existing,
+      ...incomingUser,
+      id: existing.id || incomingUser.id,
+      email: (incomingUser.email || existing.email || '').toLowerCase(),
+      department: incomingUser.department || existing.department || 'General',
+      pod: incomingUser.pod || existing.pod || 'India Pod',
+      reportingManager: incomingUser.reportingManager || existing.reportingManager || 'Manager',
+      active: incomingUser.active ?? existing.active ?? true,
+      avatarColor: incomingUser.avatarColor || existing.avatarColor || '#10b981',
+      password: incomingUser.password || existing.password || 'password'
+    };
+    const nextUsers = [...prevUsers];
+    nextUsers[existingIndex] = mergedUser;
+    return nextUsers;
+  }
+
+  return [...prevUsers, incomingUser];
+};
+
 export const ClerkSessionBridge = () => {
   const { user, isLoaded, isSignedIn } = useUser();
   const { currentUser, setCurrentUser, users, setUsers, logout } = usePulse();
@@ -122,10 +153,7 @@ export const ClerkSessionBridge = () => {
     if (profileToUse) {
       setCurrentUser(normalizedProfile);
       setUsers((prev) => {
-        const hasMatch = prev.some((candidate) => String(candidate.email || '').toLowerCase() === normalizedProfile.email || String(candidate.id || '').toLowerCase() === String(normalizedProfile.id || '').toLowerCase());
-        const nextUsers = hasMatch
-          ? prev.map((candidate) => (String(candidate.email || '').toLowerCase() === normalizedProfile.email || String(candidate.id || '').toLowerCase() === String(normalizedProfile.id || '').toLowerCase() ? normalizedProfile : candidate))
-          : [...prev, normalizedProfile];
+        const nextUsers = upsertUserIntoList(prev, normalizedProfile);
         persistClerkUser(nextUsers);
         return nextUsers;
       });
@@ -148,8 +176,7 @@ export const ClerkSessionBridge = () => {
 
     setCurrentUser(derivedUser);
     setUsers((prev) => {
-      const hasMatch = prev.some((candidate) => String(candidate.email || '').toLowerCase() === derivedUser.email || String(candidate.id || '').toLowerCase() === String(derivedUser.id || '').toLowerCase());
-      const nextUsers = hasMatch ? prev.map((candidate) => (String(candidate.email || '').toLowerCase() === derivedUser.email || String(candidate.id || '').toLowerCase() === String(derivedUser.id || '').toLowerCase() ? derivedUser : candidate)) : [...prev, derivedUser];
+      const nextUsers = upsertUserIntoList(prev, derivedUser);
       persistClerkUser(nextUsers);
       return nextUsers;
     });

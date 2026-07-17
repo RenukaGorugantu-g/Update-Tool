@@ -53,13 +53,15 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const rosterUsers = useMemo(() => {
-    return [...users].sort((a, b) => a.name.localeCompare(b.name));
+    return [...users].filter((user) => Boolean(user?.name)).sort((a, b) => a.name.localeCompare(b.name));
   }, [users]);
 
-  const clerkSignupUsers = useMemo(() => rosterUsers.filter((user) => {
+  const isClerkUser = (user: typeof users[number]) => {
     const id = String(user.id || '').trim();
-    return id.startsWith('user_') || id.startsWith('user') || (!id.startsWith('u-') && !id.startsWith('emp-') && !id.startsWith('MP-') && !id.startsWith('CL-'));
-  }), [rosterUsers]);
+    return id.startsWith('user_') || id.startsWith('user') || id.startsWith('clerk') || (!id.startsWith('u-') && !id.startsWith('emp-') && !id.startsWith('MP-') && !id.startsWith('CL-'));
+  };
+
+  const clerkSignupUsers = useMemo(() => rosterUsers.filter((user) => isClerkUser(user)), [rosterUsers]);
 
   // Filter list
   const executives = users.filter(u => u.role === 'executive' || u.role === 'admin');
@@ -145,7 +147,7 @@ export const AdminDashboard: React.FC = () => {
                 <span>Clerk signups & roster</span>
               </h3>
               <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                Assign a team, pod, and reporting lead to each signed-up person so employer filters can surface their updates.
+                Assign a team, pod, and reporting lead to each signed-up person so employer filters can surface their updates. The list below includes the full company directory, including newly signed-up Clerk accounts.
               </p>
             </div>
             <button type="button" className="btn btn-secondary" onClick={handleResetSprintData} disabled={isResetting} style={{ padding: '8px 12px', fontSize: '0.75rem' }}>
@@ -155,16 +157,16 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <div style={{ display: 'grid', gap: '10px' }}>
-            {clerkSignupUsers.length === 0 ? (
-              <div className="glass-card" style={{ padding: '12px', color: 'var(--text-secondary)' }}>No Clerk signups have been synced yet.</div>
-            ) : clerkSignupUsers.map((user) => {
+            {rosterUsers.length === 0 ? (
+              <div className="glass-card" style={{ padding: '12px', color: 'var(--text-secondary)' }}>No roster profiles are available yet.</div>
+            ) : rosterUsers.map((user) => {
               const draft = assignments[user.id] || {
                 role: user.role || 'employee',
                 department: user.department || 'General',
                 pod: user.pod || 'India Pod',
                 reportingManager: user.reportingManager || 'Manager'
               };
-              const isClerkUser = String(user.id || '').trim().startsWith('user_') || String(user.id || '').trim().startsWith('user');
+              const clerkBadge = isClerkUser(user);
               return (
                 <div key={user.id} className="glass-card" style={{ padding: '14px', display: 'grid', gap: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
@@ -173,7 +175,7 @@ export const AdminDashboard: React.FC = () => {
                       <div style={{ fontSize: '0.77rem', color: 'var(--text-muted)' }}>{user.email} • {user.employeeId || 'No employee ID'}</div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {isClerkUser ? <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '4px 8px', borderRadius: '999px', background: 'rgba(16, 185, 129, 0.14)', color: '#34d399' }}>Clerk signup</span> : null}
+                      {clerkBadge ? <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '4px 8px', borderRadius: '999px', background: 'rgba(16, 185, 129, 0.14)', color: '#34d399' }}>Clerk signup</span> : null}
                       <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '4px 8px', borderRadius: '999px', background: 'rgba(59, 130, 246, 0.14)', color: '#60a5fa' }}>{user.role}</span>
                     </div>
                   </div>
