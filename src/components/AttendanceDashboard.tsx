@@ -21,19 +21,84 @@ export const AttendanceDashboard: React.FC = () => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
   const [sessionActive, setSessionActive] = useState(false);
   const [sessionElapsed, setSessionElapsed] = useState(0);
+  const [sessionAccumulatedSeconds, setSessionAccumulatedSeconds] = useState(0);
   const [sessionStart, setSessionStart] = useState<string | null>(null);
   const [sessionEnd, setSessionEnd] = useState<string | null>(null);
   const [sessionLocation, setSessionLocation] = useState<'Office' | 'Remote'>('Remote');
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null);
   const [attendanceMessage, setAttendanceMessage] = useState('Ready to clock in');
+  const currentSessionKey = currentUser?.id ? `pulse-attendance-session-${currentUser.id}` : 'pulse-attendance-session';
+  const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    if (!sessionActive) return;
-    const timer = window.setInterval(() => {
-      setSessionElapsed((prev) => prev + 1);
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [sessionActive]);
+    if (!currentUser) return;
+    try {
+      const saved = localStorage.getItem(currentSessionKey);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (parsed?.date !== today) {
+        localStorage.removeItem(currentSessionKey);
+        return;
+      }
+      const restoredActive = Boolean(parsed?.active);
+      const restoredAccumulatedSeconds = Number(parsed?.accumulatedSeconds || 0);
+      const restoredStartedAt = Number(parsed?.sessionStartedAt || 0);
+      setSessionActive(restoredActive);
+      setSessionAccumulatedSeconds(restoredAccumulatedSeconds);
+      setSessionStartedAt(restoredStartedAt || null);
+      setSessionStart(parsed?.sessionStart || null);
+      setSessionEnd(parsed?.sessionEnd || null);
+      setSessionLocation(parsed?.sessionLocation || 'Remote');
+      setAttendanceMessage(parsed?.attendanceMessage || 'Ready to clock in');
+      if (restoredActive && restoredStartedAt) {
+        setSessionElapsed(Math.max(0, Math.floor((Date.now() - restoredStartedAt) / 1000)));
+      }
+    } catch (error) {
+      console.warn('Unable to restore attendance session state:', error);
+    }
+  }, [currentSessionKey, currentUser, today]);
+
+  useEffect(() => {
+    if (!sessionActive || sessionStartedAt === null) return;
+    const syncElapsed = () => {
+      setSessionElapsed(Math.max(0, Math.floor((Date.now() - sessionStartedAt) / 1000)));
+    };
+    syncElapsed();
+    const timer = window.setInterval(syncElapsed, 1000);
+    const onVisibilityChange = () => {
+      if (!document.hidden) {
+        syncElapsed();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [sessionActive, sessionStartedAt]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      localStorage.removeItem(currentSessionKey);
+      return;
+    }
+    const payload = {
+      date: today,
+      active: sessionActive,
+      accumulatedSeconds: sessionAccumulatedSeconds,
+      sessionStartedAt,
+      sessionStart,
+      sessionEnd,
+      sessionLocation,
+      attendanceMessage,
+      lastUpdatedAt: new Date().toISOString()
+    };
+    if (sessionActive || sessionAccumulatedSeconds > 0 || sessionStart || sessionEnd) {
+      localStorage.setItem(currentSessionKey, JSON.stringify(payload));
+    } else {
+      localStorage.removeItem(currentSessionKey);
+    }
+  }, [attendanceMessage, currentSessionKey, currentUser, sessionAccumulatedSeconds, sessionActive, sessionEnd, sessionLocation, sessionStart, sessionStartedAt, today]);
 
   const parseMinutes = (value?: string) => {
     const normalized = String(value || '0h').trim();
@@ -50,6 +115,8 @@ export const AttendanceDashboard: React.FC = () => {
     const secs = seconds % 60;
     return `${hrs}h ${mins}m ${secs}s`;
   };
+
+  const totalSessionSeconds = sessionActive ? sessionAccumulatedSeconds + sessionElapsed : sessionAccumulatedSeconds;
 
   const statusOptions = ['All', 'Present', 'Late', 'Half Day', 'Auto Logout', 'Absent'];
 
@@ -294,10 +361,11 @@ export const AttendanceDashboard: React.FC = () => {
       setSessionStartedAt(now.getTime());
       setAttendanceMessage(`Clocked in at ${time}.`);
     } else {
-      const elapsedSeconds = sessionStartedAt ? Math.max(1, Math.floor((now.getTime() - sessionStartedAt) / 1000)) : sessionElapsed;
-      const workedLabel = formatDurationLabel(elapsedSeconds);
+      const completedSeconds = Math.max(1, sessionActive ? sessionAccumulatedSeconds + sessionElapsed : sessionAccumulatedSeconds);
+      const workedLabel = formatDurationLabel(completedSeconds);
       setSessionActive(false);
-      setSessionElapsed(elapsedSeconds);
+      setSessionAccumulatedSeconds(completedSeconds);
+      setSessionElapsed(0);
       setSessionEnd(time);
       setSessionStartedAt(null);
       setAttendanceMessage(`Clocked out at ${time}. Worked ${workedLabel}.`);
@@ -307,7 +375,7 @@ export const AttendanceDashboard: React.FC = () => {
       date,
       loginTime: action === 'login' ? time : '',
       logoutTime: action === 'logout' ? time : '',
-      workingHours: action === 'logout' ? formatDurationLabel(action === 'logout' ? (sessionStartedAt ? Math.max(1, Math.floor((now.getTime() - sessionStartedAt) / 1000)) : sessionElapsed) : 0) : '0h 0m',
+      workingHours: action === 'logout' ? formatDurationLabel(sessionActive ? sessionAccumulatedSeconds + sessionElapsed : sessionAccumulatedSeconds) : '0h 0m',
       status: action === 'login' ? 'Present' : 'Auto Logout',
       officeRemote: location,
       ipAddress,
@@ -348,10 +416,10 @@ export const AttendanceDashboard: React.FC = () => {
               <h3 style={{ margin: '6px 0 0', fontSize: '1rem', fontWeight: 800 }}>Today&apos;s attendance tracker</h3>
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => void handleAttendanceAction('login')} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button type="button" onClick={() => void handleAttendanceAction('login')} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #0f766e 0%, #34d399 100%)', color: '#fff', border: 'none' }}>
                 <LogIn size={14} /> Clock In
               </button>
-              <button type="button" onClick={() => void handleAttendanceAction('logout')} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button type="button" onClick={() => void handleAttendanceAction('logout')} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #b91c1c 0%, #f87171 100%)', color: '#fff', border: 'none' }}>
                 <LogOut size={14} /> Clock Out
               </button>
             </div>
@@ -359,7 +427,7 @@ export const AttendanceDashboard: React.FC = () => {
           <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
             <div className="surface-card" style={{ padding: '14px' }}>
               <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Session</div>
-              <div style={{ fontSize: '1.45rem', fontWeight: 800, marginTop: '6px' }}>{sessionActive ? formatDurationLabel(sessionElapsed) : 'Not active'}</div>
+              <div style={{ fontSize: '1.45rem', fontWeight: 800, marginTop: '6px' }}>{sessionActive ? formatDurationLabel(totalSessionSeconds) : formatDurationLabel(sessionAccumulatedSeconds)}</div>
             </div>
             <div className="surface-card" style={{ padding: '14px' }}>
               <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Clock In</div>
@@ -487,8 +555,8 @@ export const AttendanceDashboard: React.FC = () => {
                   <tr key={entry.attendanceId}>
                     {!isEmployee ? <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>{entry.employeeName || currentUser?.name}</td> : null}
                     <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>{entry.date || entry.createdAt?.slice(0, 10) || '--'}</td>
-                    <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>{entry.loginTime || '--'}</td>
-                    <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>{entry.logoutTime || '--'}</td>
+                    <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)', color: entry.loginTime ? '#34d399' : 'var(--text-muted)' }}>{entry.loginTime || '--'}</td>
+                    <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)', color: entry.logoutTime ? '#f59e0b' : 'var(--text-muted)' }}>{entry.logoutTime || '--'}</td>
                     <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>{entry.workingHours || '0h'}</td>
                     <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 8px', borderRadius: '999px', background: chip.bg, color: chip.color, fontSize: '0.75rem', fontWeight: 700 }}>

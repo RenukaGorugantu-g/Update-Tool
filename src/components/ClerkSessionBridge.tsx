@@ -88,34 +88,46 @@ export const ClerkSessionBridge = () => {
       : null;
 
     const seededProfile = seededClerkProfiles.find((candidate) => candidate.email.toLowerCase() === clerkEmail);
-    const existingInUsers = users.find((candidate) => candidate.email.toLowerCase() === clerkEmail);
+    const existingInUsers = users.find((candidate) => String(candidate.email || '').toLowerCase() === clerkEmail || candidate.id === user.id);
 
     const resolvedRole = (seededProfile?.role || existingInUsers?.role || normalizedMetadataRole || 'employee') as ClerkRole;
     const profileToUse = seededProfile || existingInUsers;
 
+    const normalizedProfile = {
+      id: profileToUse?.id || user.id,
+      name: clerkName,
+      email: (profileToUse?.email || clerkEmail || `${user.id}@clerk.local`).toLowerCase(),
+      role: resolvedRole,
+      department: profileToUse?.department || 'General',
+      pod: profileToUse?.pod || 'India Pod',
+      reportingManager: profileToUse?.reportingManager || 'Manager',
+      employeeId: profileToUse?.employeeId || clerkEmployeeId,
+      active: profileToUse?.active ?? true,
+      avatarColor: profileToUse?.avatarColor || '#10b981',
+      password: profileToUse?.password || 'password'
+    };
+
+    const persistClerkUser = (nextUsers: typeof users) => {
+      const nextList = nextUsers;
+      localStorage.setItem('pulse-users', JSON.stringify(nextList));
+      const apiBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '') || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://update-tool.onrender.com');
+      if (!apiBase) return;
+      void fetch(`${apiBase}/api/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nextList)
+      }).catch((error) => console.warn('Unable to persist Clerk user to backend:', error));
+    };
+
     if (profileToUse) {
-      const normalizedProfile = {
-        ...profileToUse,
-        role: resolvedRole,
-        email: (profileToUse.email || clerkEmail || `${user.id}@clerk.local`).toLowerCase(),
-        department: profileToUse.department || 'General',
-        pod: profileToUse.pod || 'India Pod',
-        reportingManager: profileToUse.reportingManager || 'Manager',
-        employeeId: profileToUse.employeeId || clerkEmployeeId,
-        active: profileToUse.active ?? true,
-        avatarColor: profileToUse.avatarColor || '#10b981'
-      };
       setCurrentUser(normalizedProfile);
       setUsers((prev) => {
-        if (seededProfile) {
-          const has = prev.some(p => String(p.email || '').toLowerCase() === clerkEmail);
-          const replaced = prev.map(p => (String(p.email || '').toLowerCase() === clerkEmail ? normalizedProfile : p));
-          return has ? replaced : [...prev, normalizedProfile];
-        }
-        if (prev.some((candidate) => candidate.email.toLowerCase() === clerkEmail)) {
-          return prev.map((candidate) => candidate.email.toLowerCase() === clerkEmail ? normalizedProfile : candidate);
-        }
-        return [...prev, normalizedProfile];
+        const hasMatch = prev.some((candidate) => String(candidate.email || '').toLowerCase() === normalizedProfile.email || String(candidate.id || '').toLowerCase() === String(normalizedProfile.id || '').toLowerCase());
+        const nextUsers = hasMatch
+          ? prev.map((candidate) => (String(candidate.email || '').toLowerCase() === normalizedProfile.email || String(candidate.id || '').toLowerCase() === String(normalizedProfile.id || '').toLowerCase() ? normalizedProfile : candidate))
+          : [...prev, normalizedProfile];
+        persistClerkUser(nextUsers);
+        return nextUsers;
       });
       return;
     }
@@ -130,15 +142,16 @@ export const ClerkSessionBridge = () => {
       reportingManager: 'Manager',
       employeeId: clerkEmployeeId,
       active: true,
-      avatarColor: '#10b981'
+      avatarColor: '#10b981',
+      password: 'password'
     };
 
     setCurrentUser(derivedUser);
     setUsers((prev) => {
-      if (prev.some((candidate) => candidate.email.toLowerCase() === clerkEmail)) {
-        return prev;
-      }
-      return [...prev, derivedUser];
+      const hasMatch = prev.some((candidate) => String(candidate.email || '').toLowerCase() === derivedUser.email || String(candidate.id || '').toLowerCase() === String(derivedUser.id || '').toLowerCase());
+      const nextUsers = hasMatch ? prev.map((candidate) => (String(candidate.email || '').toLowerCase() === derivedUser.email || String(candidate.id || '').toLowerCase() === String(derivedUser.id || '').toLowerCase() ? derivedUser : candidate)) : [...prev, derivedUser];
+      persistClerkUser(nextUsers);
+      return nextUsers;
     });
   }, [isLoaded, isSignedIn, setCurrentUser, setUsers, user, users]);
 
