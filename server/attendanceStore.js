@@ -30,6 +30,40 @@ const writeStore = async (filePath, data) => {
   await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 };
 
+const getAttendanceIdentity = (entry = {}) => {
+  const userId = String(entry.userId || '').trim();
+  const date = String(entry.date || '').trim();
+  const email = String(entry.email || '').trim();
+  return [userId, date, email].filter(Boolean).join('::');
+};
+
+const mergeAttendanceEntry = (existing = {}, incoming = {}) => {
+  const now = new Date().toISOString();
+  return {
+    ...existing,
+    ...incoming,
+    attendanceId: incoming.attendanceId || existing.attendanceId || `att-${incoming.userId || existing.userId || 'unknown'}-${incoming.date || existing.date || now.slice(0, 10)}`,
+    userId: incoming.userId || existing.userId || '',
+    employeeName: incoming.employeeName || existing.employeeName || '',
+    email: incoming.email || existing.email || '',
+    department: incoming.department || existing.department || '',
+    date: incoming.date || existing.date || now.slice(0, 10),
+    loginTime: incoming.loginTime || existing.loginTime || '',
+    logoutTime: incoming.logoutTime || existing.logoutTime || '',
+    workingHours: incoming.workingHours || existing.workingHours || '0h',
+    idleTime: incoming.idleTime || existing.idleTime || '0m',
+    productiveHours: incoming.productiveHours || existing.productiveHours || '0h',
+    status: incoming.status || existing.status || 'Present',
+    officeRemote: incoming.officeRemote || existing.officeRemote || 'Remote',
+    ipAddress: incoming.ipAddress || existing.ipAddress || '',
+    device: incoming.device || existing.device || '',
+    browser: incoming.browser || existing.browser || '',
+    os: incoming.os || existing.os || '',
+    createdAt: existing.createdAt || incoming.createdAt || now,
+    updatedAt: now
+  };
+};
+
 export const createAttendanceStore = (filePath = defaultPath) => ({
   async getAll() {
     return readStore(filePath);
@@ -37,18 +71,28 @@ export const createAttendanceStore = (filePath = defaultPath) => ({
 
   async save(entry) {
     const items = await readStore(filePath);
-    const idx = items.findIndex((current) => current.attendanceId === entry.attendanceId);
     const now = new Date().toISOString();
-    const toSave = {
+    const incoming = {
       ...entry,
       createdAt: entry.createdAt || now,
       updatedAt: now
     };
 
-    if (idx === -1) {
+    const existingIndex = items.findIndex((current) => {
+      if (current.attendanceId && incoming.attendanceId && current.attendanceId === incoming.attendanceId) {
+        return true;
+      }
+      return getAttendanceIdentity(current) && getAttendanceIdentity(current) === getAttendanceIdentity(incoming);
+    });
+
+    const toSave = existingIndex === -1
+      ? mergeAttendanceEntry({}, incoming)
+      : mergeAttendanceEntry(items[existingIndex], incoming);
+
+    if (existingIndex === -1) {
       items.push(toSave);
     } else {
-      items[idx] = toSave;
+      items[existingIndex] = toSave;
     }
 
     await writeStore(filePath, items);

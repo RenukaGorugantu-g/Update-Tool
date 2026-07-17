@@ -13,6 +13,7 @@ const statusStyles: Record<string, { bg: string; color: string }> = {
 export const AttendanceDashboard: React.FC = () => {
   const { attendance, users, currentUser, recordAttendanceEvent } = usePulse();
   const role = currentUser?.role?.toLowerCase() || '';
+  const apiBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '') || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
   const isEmployee = role === 'employee';
   const canViewTeamAttendance = role === 'admin' || role === 'executive' || role === 'employer';
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -28,6 +29,21 @@ export const AttendanceDashboard: React.FC = () => {
   const [attendanceMessage, setAttendanceMessage] = useState('Ready to clock in');
 
   const today = new Date().toISOString().split('T')[0];
+
+  const latestAttendanceDate = useMemo(() => {
+    const dates = attendance
+      .map((entry) => entry.date)
+      .filter((value): value is string => Boolean(value))
+      .sort((a, b) => b.localeCompare(a));
+    return dates[0] || today;
+  }, [attendance, today]);
+
+  useEffect(() => {
+    if (!attendance.length) return;
+    if (selectedDate === today && !attendance.some((entry) => entry.date === selectedDate)) {
+      setSelectedDate(latestAttendanceDate);
+    }
+  }, [attendance, latestAttendanceDate, selectedDate, today]);
 
   useEffect(() => {
     if (!sessionActive) return;
@@ -54,6 +70,32 @@ export const AttendanceDashboard: React.FC = () => {
   };
 
   const statusOptions = ['All', 'Present', 'Late', 'Half Day', 'Auto Logout', 'Absent'];
+
+  const configuredOfficeIps = useMemo(() => {
+    const raw = (import.meta.env.VITE_OFFICE_IPS || import.meta.env.VITE_OFFICE_IP || '196.12.41.58').trim();
+    return raw
+      .split(',')
+      .map((entry: string) => entry.trim())
+      .filter(Boolean);
+  }, []);
+
+  const normalizeSelectionValue = (value?: string) => String(value || '').trim().toLowerCase();
+
+  const resolveLocation = (ipValue?: string) => {
+    const normalized = String(ipValue || '').trim();
+    if (!normalized || normalized === 'Unknown') return 'Remote' as const;
+    const isOfficeIp = configuredOfficeIps.some((entry: string) => entry === normalized || entry === normalized.replace(/\s+/g, ''));
+    return isOfficeIp ? 'Office' as const : 'Remote' as const;
+  };
+
+  const matchesEmployeeSelection = (entry: any, selectedValue: string) => {
+    if (!selectedValue || selectedValue === 'all') return true;
+    const selected = normalizeSelectionValue(selectedValue);
+    const candidates = [entry.userId, entry.email, entry.employeeName]
+      .map((value) => normalizeSelectionValue(value))
+      .filter(Boolean);
+    return candidates.includes(selected);
+  };
 
   const employeeOptions = useMemo(() => {
     const byKey = new Map<string, { value: string; label: string }>();
@@ -108,8 +150,7 @@ export const AttendanceDashboard: React.FC = () => {
     const source = isEmployee ? employeeEntries : attendance;
     return source
       .filter((entry) => {
-        const entryKey = entry.userId || entry.email || entry.employeeName || '';
-        const matchesEmployee = !canViewTeamAttendance || selectedEmployeeId === 'all' || entryKey === selectedEmployeeId;
+        const matchesEmployee = !canViewTeamAttendance || selectedEmployeeId === 'all' || matchesEmployeeSelection(entry, selectedEmployeeId);
         const matchesDate = !selectedDate || entry.date === selectedDate;
         const matchesStatus = selectedStatus === 'All' || entry.status === selectedStatus;
         const haystack = `${entry.employeeName || ''} ${entry.department || ''} ${entry.email || ''}`.toLowerCase();
@@ -194,28 +235,73 @@ export const AttendanceDashboard: React.FC = () => {
     const href = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = href;
-    link.download = filename;
+    link.download = filename.endsWith('.csv') ? filename : `${filename}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(href);
   };
 
-  const exportAttendanceForUser = (entry: any) => {
+  const exportAttendanceForUser = async (entry: any) => {
     const rows = attendance.filter((item) => item.userId === entry.userId).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-    exportRows(rows, `${(entry.employeeName || entry.userId || 'employee').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-attendance.csv`);
+    const filename = `${(entry.employeeName || entry.userId || 'employee').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-attendance`;
+    if (apiBase) {
+      try {
+        const params = new URLSearchParams();
+        if (entry.userId) params.set('userId', entry.userId);
+        if (entry.email) params.set('email', entry.email);
+        const response = await fetch(`${apiBase}/api/attendance/export${params.toString() ? `?${params.toString()}` : ''}`);
+        if (response.ok) {
+          const blob = await response.blob();
+          const href = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = href;
+          link.download = `${filename}.csv`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(href);
+          return;
+        }
+      } catch (error) {
+        console.warn('attendance export from backend failed, falling back to local export', error);
+      }
+    }
+    exportRows(rows, filename);
   };
 
-  const exportSelectedEmployee = () => {
+  const exportSelectedEmployee = async () => {
     const rows = selectedEmployeeId === 'all'
       ? visibleEntries.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-      : attendance.filter((item) => {
-          const entryKey = item.userId || item.email || item.employeeName || '';
-          return entryKey === selectedEmployeeId;
-        }).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+      : attendance.filter((item) => matchesEmployeeSelection(item, selectedEmployeeId)).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     const filename = selectedEmployeeId === 'all'
-      ? `attendance-logs-${selectedDate || today}.csv`
-      : `${(employeeOptions.find((option) => option.value === selectedEmployeeId)?.label || 'employee').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-attendance.csv`;
+      ? `attendance-logs-${selectedDate || today}`
+      : `${(employeeOptions.find((option) => option.value === selectedEmployeeId)?.label || 'employee').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-attendance`;
+    if (apiBase) {
+      try {
+        const params = new URLSearchParams();
+        if (selectedEmployeeId !== 'all') {
+          const selectedOption = employeeOptions.find((option) => option.value === selectedEmployeeId);
+          params.set('userId', selectedOption?.value || selectedEmployeeId);
+        }
+        if (selectedDate) params.set('date', selectedDate);
+        const response = await fetch(`${apiBase}/api/attendance/export${params.toString() ? `?${params.toString()}` : ''}`);
+        if (response.ok) {
+          const blob = await response.blob();
+          const href = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = href;
+          link.download = `${filename}.csv`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(href);
+          return;
+        }
+      } catch (error) {
+        console.warn('attendance export from backend failed, falling back to local export', error);
+      }
+    }
     exportRows(rows, filename);
   };
 
@@ -227,9 +313,22 @@ export const AttendanceDashboard: React.FC = () => {
     const ua = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown';
     const browser = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : 'Browser';
     const os = /Windows/.test(ua) ? 'Windows' : /Mac/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : 'Unknown';
-    const officeIp = '196.12.41.58';
-    const ipAddress = typeof window !== 'undefined' ? officeIp : 'Unknown';
-    const location: 'Office' | 'Remote' = ipAddress === officeIp ? 'Office' : 'Remote';
+    let detectedIpAddress = '';
+
+    try {
+      const response = await fetch('https://api.ipify.org?format=json', { headers: { Accept: 'application/json' } });
+      if (response.ok) {
+        const payload = await response.json().catch(() => null);
+        if (payload?.ip) {
+          detectedIpAddress = String(payload.ip).trim();
+        }
+      }
+    } catch (error) {
+      console.warn('Unable to detect public IP for attendance location:', error);
+    }
+
+    const ipAddress = detectedIpAddress || 'Unknown';
+    const location: 'Office' | 'Remote' = resolveLocation(ipAddress);
 
     if (action === 'login') {
       setSessionActive(true);
@@ -448,7 +547,9 @@ export const AttendanceDashboard: React.FC = () => {
             </thead>
             <tbody>
               {visibleEntries.length === 0 ? (
-                <tr><td colSpan={isEmployee ? 7 : 8} style={{ padding: '14px 8px', color: 'var(--text-secondary)' }}>No matching attendance rows found for this filter.</td></tr>
+                <tr><td colSpan={isEmployee ? 7 : 8} style={{ padding: '14px 8px', color: 'var(--text-secondary)' }}>
+                  {attendance.length > 0 ? `No attendance rows found for ${selectedDate || 'the selected day'}.` : 'No attendance rows have been captured yet for this account.'}
+                </td></tr>
               ) : visibleEntries.map((entry) => {
                 const chip = statusStyles[entry.status || 'Present'] || statusStyles.Present;
                 return (

@@ -236,9 +236,48 @@ const getApiBase = () => {
     }
   }
 
-  return '';
+  return 'https://update-tool.onrender.com';
 };
 
+const mergeAttendanceRecords = (existing: AttendanceRecord[], incoming: AttendanceRecord[]) => {
+  const byKey = new Map<string, AttendanceRecord>();
+  const merged = [...(existing || []), ...(incoming || [])]
+    .filter((entry): entry is AttendanceRecord => Boolean(entry && entry.userId));
+
+  merged.forEach((entry) => {
+    const key = `${String(entry.userId || '').trim()}::${String(entry.date || '').trim()}::${String(entry.email || '').trim()}`;
+    const previous = byKey.get(key);
+    const mergedEntry = previous
+      ? {
+          ...previous,
+          ...entry,
+          attendanceId: entry.attendanceId || previous.attendanceId || `att-${entry.userId || 'unknown'}-${entry.date || 'unknown'}`,
+          loginTime: entry.loginTime || previous.loginTime || '',
+          logoutTime: entry.logoutTime || previous.logoutTime || '',
+          workingHours: entry.workingHours || previous.workingHours || '0h',
+          idleTime: entry.idleTime || previous.idleTime || '0m',
+          productiveHours: entry.productiveHours || previous.productiveHours || '0h',
+          status: entry.status || previous.status || 'Present',
+          officeRemote: entry.officeRemote || previous.officeRemote || 'Remote',
+          ipAddress: entry.ipAddress || previous.ipAddress || '',
+          device: entry.device || previous.device || '',
+          browser: entry.browser || previous.browser || '',
+          os: entry.os || previous.os || '',
+          createdAt: previous.createdAt || entry.createdAt,
+          updatedAt: entry.updatedAt || previous.updatedAt || new Date().toISOString()
+        }
+      : {
+          ...entry,
+          attendanceId: entry.attendanceId || `att-${entry.userId || 'unknown'}-${entry.date || 'unknown'}`,
+          createdAt: entry.createdAt || new Date().toISOString(),
+          updatedAt: entry.updatedAt || new Date().toISOString()
+        };
+
+    byKey.set(key, mergedEntry);
+  });
+
+  return Array.from(byKey.values());
+};
 
 export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<'light' | 'dark'>('light'); // Default to the clean white enterprise shell
@@ -495,14 +534,26 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     })();
   }, [apiBase]);
 
-  // Load templates & reminders from backend
+  // Load attendance + templates & reminders from backend
   useEffect(() => {
     if (!apiBase) return;
+    let cancelled = false;
     (async () => {
+      try {
+        const attendanceResp = await fetch(`${apiBase}/api/attendance`);
+        const attendanceJson = await attendanceResp.json().catch(() => null);
+        if (!cancelled && attendanceJson?.success && Array.isArray(attendanceJson.attendance)) {
+          setAttendance((prev) => mergeAttendanceRecords(prev, attendanceJson.attendance));
+          localStorage.setItem('pulse-attendance', JSON.stringify(mergeAttendanceRecords([], attendanceJson.attendance)));
+        }
+      } catch (error) {
+        console.warn('Unable to load attendance from backend, using local data:', error);
+      }
+
       try {
         const tResp = await fetch(`${apiBase}/api/templates`);
         const tJson = await tResp.json().catch(() => null);
-        if (tJson?.success && Array.isArray(tJson.templates)) {
+        if (!cancelled && tJson?.success && Array.isArray(tJson.templates)) {
           setTemplates(tJson.templates);
           localStorage.setItem('pulse-templates', JSON.stringify(tJson.templates));
         }
@@ -513,7 +564,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try {
         const rResp = await fetch(`${apiBase}/api/reminders`);
         const rJson = await rResp.json().catch(() => null);
-        if (rJson?.success && Array.isArray(rJson.reminders)) {
+        if (!cancelled && rJson?.success && Array.isArray(rJson.reminders)) {
           setReminders(rJson.reminders);
           localStorage.setItem('pulse-reminders', JSON.stringify(rJson.reminders));
         }
@@ -521,6 +572,9 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // continue with local reminders
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [apiBase]);
 
   const persistTemplates = async (nextTemplates: string[]) => {
@@ -583,30 +637,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setAttendance((prev) => {
-      const existing = prev.find((item) => item.userId === attendanceEntry.userId && item.date === attendanceEntry.date);
-      const nextList = existing
-        ? prev.map((item) => item.attendanceId === existing.attendanceId
-          ? {
-              ...item,
-              ...attendanceEntry,
-              attendanceId: existing.attendanceId,
-              loginTime: attendanceEntry.loginTime || item.loginTime || '',
-              logoutTime: attendanceEntry.logoutTime || item.logoutTime || '',
-              workingHours: attendanceEntry.workingHours || item.workingHours || '0h',
-              idleTime: attendanceEntry.idleTime || item.idleTime || '0m',
-              productiveHours: attendanceEntry.productiveHours || item.productiveHours || '0h',
-              status: attendanceEntry.status || item.status || 'Present',
-              officeRemote: attendanceEntry.officeRemote || item.officeRemote || 'Remote',
-              ipAddress: attendanceEntry.ipAddress || item.ipAddress || '',
-              device: attendanceEntry.device || item.device || '',
-              browser: attendanceEntry.browser || item.browser || '',
-              os: attendanceEntry.os || item.os || '',
-              createdAt: item.createdAt || attendanceEntry.createdAt,
-              updatedAt: attendanceEntry.updatedAt || item.updatedAt
-            }
-          : item)
-        : [...prev, attendanceEntry];
-
+      const nextList = mergeAttendanceRecords(prev, [attendanceEntry]);
       localStorage.setItem('pulse-attendance', JSON.stringify(nextList));
       return nextList;
     });

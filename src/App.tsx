@@ -34,7 +34,7 @@ const getApiBase = () => {
     return 'http://localhost:5000';
   }
 
-  return '';
+  return 'https://update-tool.onrender.com';
 };
 
 function App() {

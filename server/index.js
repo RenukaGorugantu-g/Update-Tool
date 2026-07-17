@@ -489,8 +489,15 @@ app.post('/api/attendance', async (req, res) => {
 app.get('/api/attendance/export', async (req, res) => {
   try {
     const items = await attendanceStore.getAll();
+    const { userId, email, date } = req.query;
+    const filtered = items.filter((entry) => {
+      const matchesUserId = !userId || String(entry.userId || '').toLowerCase() === String(userId).toLowerCase();
+      const matchesEmail = !email || String(entry.email || '').toLowerCase() === String(email).toLowerCase();
+      const matchesDate = !date || String(entry.date || '').toLowerCase() === String(date).toLowerCase();
+      return matchesUserId && matchesEmail && matchesDate;
+    });
     const header = 'Employee Name,Email,Department,Date,Login,Logout,Working Hours,Idle Time,Productive Hours,Attendance Status,Office/Remote,IP Address,Browser,Operating System,Device\n';
-    const rows = items.map((entry) => {
+    const rows = filtered.map((entry) => {
       const values = [
         entry.employeeName || '',
         entry.email || '',
@@ -511,7 +518,7 @@ app.get('/api/attendance/export', async (req, res) => {
       return values.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(',');
     }).join('\n');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="monthly-attendance-report.csv"');
+    res.setHeader('Content-Disposition', 'attachment; filename="attendance-export.csv"');
     return res.end(header + rows);
   } catch (error) {
     console.error('export attendance error:', error);
