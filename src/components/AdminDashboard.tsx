@@ -61,8 +61,6 @@ export const AdminDashboard: React.FC = () => {
     return id.startsWith('user_') || id.startsWith('user') || id.startsWith('clerk') || (!id.startsWith('u-') && !id.startsWith('emp-') && !id.startsWith('MP-') && !id.startsWith('CL-'));
   };
 
-  const clerkSignupUsers = useMemo(() => rosterUsers.filter((user) => isClerkUser(user)), [rosterUsers]);
-
   // Filter list
   const executives = users.filter(u => u.role === 'executive' || u.role === 'admin');
   const activeUsersCount = users.filter(u => u.active).length;
