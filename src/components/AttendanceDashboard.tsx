@@ -537,10 +537,10 @@ export const AttendanceDashboard: React.FC = () => {
               <h3 style={{ margin: '6px 0 0', fontSize: '1rem', fontWeight: 800 }}>Today&apos;s attendance tracker</h3>
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => void handleAttendanceAction('login')} disabled={sessionActive} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.16)', color: '#d1fae5', border: '1px solid rgba(16, 185, 129, 0.28)', opacity: sessionActive ? 0.5 : 1, cursor: sessionActive ? 'not-allowed' : 'pointer' }}>
+              <button type="button" onClick={() => void handleAttendanceAction('login')} disabled={sessionActive} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.16)', color: '#191b1a', border: '1px solid rgba(16, 185, 129, 0.28)', opacity: sessionActive ? 0.5 : 1, cursor: sessionActive ? 'not-allowed' : 'pointer' }}>
                 <LogIn size={14} /> Clock In
               </button>
-              <button type="button" onClick={() => void handleAttendanceAction('logout')} disabled={!sessionActive} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(248, 113, 113, 0.14)', color: '#fee2e2', border: '1px solid rgba(248, 113, 113, 0.24)', opacity: !sessionActive ? 0.5 : 1, cursor: !sessionActive ? 'not-allowed' : 'pointer' }}>
+              <button type="button" onClick={() => void handleAttendanceAction('logout')} disabled={!sessionActive} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(248, 113, 113, 0.14)', color: '#0e0d0d', border: '1px solid rgba(248, 113, 113, 0.24)', opacity: !sessionActive ? 0.5 : 1, cursor: !sessionActive ? 'not-allowed' : 'pointer' }}>
                 <LogOut size={14} /> Clock Out
               </button>
             </div>
