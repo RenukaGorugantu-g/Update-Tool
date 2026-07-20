@@ -272,6 +272,19 @@ const mergeUsersLists = (existingUsers: User[], incomingUsers: User[]) => {
   return merged;
 };
 
+const normalizeListValue = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry ?? '').trim()).filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(/\r?\n/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
 const mergeUpdatesRecords = (existing: UpdateRecord[], incoming: UpdateRecord[]) => {
   const byKey = new Map<string, UpdateRecord>();
   const merged = [...(existing || []), ...(incoming || [])]
@@ -293,9 +306,9 @@ const mergeUpdatesRecords = (existing: UpdateRecord[], incoming: UpdateRecord[])
           date: entry.date || previous.date || '',
           timestamp: entry.timestamp || previous.timestamp || '',
           comments: Array.isArray(entry.comments) ? entry.comments : Array.isArray(previous.comments) ? previous.comments : [],
-          completed: Array.isArray(entry.completed) ? entry.completed : Array.isArray(previous.completed) ? previous.completed : [],
-          working: Array.isArray(entry.working) ? entry.working : Array.isArray(previous.working) ? previous.working : [],
-          blockers: Array.isArray(entry.blockers) ? entry.blockers : Array.isArray(previous.blockers) ? previous.blockers : [],
+          completed: normalizeListValue(entry.completed).length > 0 ? normalizeListValue(entry.completed) : normalizeListValue(previous.completed),
+          working: normalizeListValue(entry.working).length > 0 ? normalizeListValue(entry.working) : normalizeListValue(previous.working),
+          blockers: normalizeListValue(entry.blockers).length > 0 ? normalizeListValue(entry.blockers) : normalizeListValue(previous.blockers),
           files: Array.isArray(entry.files) ? entry.files : Array.isArray(previous.files) ? previous.files : []
         }
       : {
@@ -839,9 +852,9 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       department: currentUser.department,
       pod: currentUser.pod,
       date: today,
-      completed: newUpdate.completed.filter(s => s.trim() !== ''),
-      working: newUpdate.working.filter(s => s.trim() !== ''),
-      blockers: newUpdate.blockers.filter(s => s.trim() !== ''),
+      completed: normalizeListValue(newUpdate.completed),
+      working: normalizeListValue(newUpdate.working),
+      blockers: normalizeListValue(newUpdate.blockers),
       priority: newUpdate.priority,
       projectName: newUpdate.projectName,
       files: newUpdate.files,

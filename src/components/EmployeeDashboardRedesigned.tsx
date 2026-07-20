@@ -3,6 +3,19 @@ import { usePulse } from '../context/PulseContext';
 import { exportAnalyticsToCsv } from '../utils/reporting';
 import { AlertTriangle, CheckCircle2, Download, Mic, Paperclip, Send, Volume2, X } from 'lucide-react';
 
+const normalizeListValue = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry ?? '').trim()).filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(/\r?\n/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
 export const EmployeeDashboard: React.FC = () => {
   const {
     currentUser,
@@ -56,9 +69,9 @@ export const EmployeeDashboard: React.FC = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const todayUpdate = updates.find((u) => u.employeeId === currentUser.id && u.date === todayStr);
     if (todayUpdate) {
-      setCompleted(todayUpdate.completed.join('\n'));
-      setWorking(todayUpdate.working.join('\n'));
-      setBlockers(todayUpdate.blockers.join('\n'));
+      setCompleted(normalizeListValue(todayUpdate.completed).join('\n'));
+      setWorking(normalizeListValue(todayUpdate.working).join('\n'));
+      setBlockers(normalizeListValue(todayUpdate.blockers).join('\n'));
       setProjectName(todayUpdate.projectName || 'General');
       setPriority(todayUpdate.priority);
       setAttachedFiles(todayUpdate.files || []);

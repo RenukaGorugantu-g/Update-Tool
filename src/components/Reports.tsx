@@ -3,6 +3,24 @@ import { usePulse } from '../context/PulseContext';
 import { exportAnalyticsToCsv } from '../utils/reporting';
 import { Search, Download } from 'lucide-react';
 
+const normalizeListValue = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry ?? '').trim()).filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(/\r?\n/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
+const formatListValue = (value: unknown) => {
+  const items = normalizeListValue(value);
+  return items.length ? items.join(' • ') : 'No entries';
+};
+
 const Reports: React.FC = () => {
   const { currentUser, users, updates } = usePulse();
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,9 +49,9 @@ const Reports: React.FC = () => {
     Timestamp: u.timestamp || '',
     Employee: u.employeeName,
     Project: u.projectName,
-    Completed: Array.isArray(u.completed) ? u.completed.join(' | ') : u.completed || '',
-    Working: Array.isArray(u.working) ? u.working.join(' | ') : u.working || '',
-    Blockers: Array.isArray(u.blockers) ? u.blockers.join(' | ') : u.blockers || '',
+    Completed: normalizeListValue(u.completed).join(' | '),
+    Working: normalizeListValue(u.working).join(' | '),
+    Blockers: normalizeListValue(u.blockers).join(' | '),
     Priority: u.priority,
     Comments: Array.isArray(u.comments) ? u.comments.map((comment: any) => comment.content || '').filter(Boolean).join(' | ') : ''
   }));
@@ -105,9 +123,9 @@ const Reports: React.FC = () => {
                   </div>
 
                   <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
-                    <div><strong>Completed:</strong> {Array.isArray(u.completed) && u.completed.length ? u.completed.join(' • ') : 'No entries'}</div>
-                    <div><strong>Working:</strong> {Array.isArray(u.working) && u.working.length ? u.working.join(' • ') : 'No entries'}</div>
-                    <div><strong>Blockers:</strong> {Array.isArray(u.blockers) && u.blockers.length ? u.blockers.join(' • ') : 'No blockers'}</div>
+                    <div><strong>Completed:</strong> {formatListValue(u.completed)}</div>
+                    <div><strong>Working:</strong> {formatListValue(u.working)}</div>
+                    <div><strong>Blockers:</strong> {formatListValue(u.blockers)}</div>
                   </div>
                 </div>
               </div>
@@ -138,9 +156,9 @@ const Reports: React.FC = () => {
                   <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{u.projectName}</div>
                 </div>
                 <div style={{ marginTop: 8 }}>
-                  <div><strong>Completed:</strong> {Array.isArray(u.completed) && u.completed.length ? u.completed.join(' • ') : 'No entries'}</div>
-                  <div><strong>Working:</strong> {Array.isArray(u.working) && u.working.length ? u.working.join(' • ') : 'No entries'}</div>
-                  <div><strong>Blockers:</strong> {Array.isArray(u.blockers) && u.blockers.length ? u.blockers.join(' • ') : 'No blockers'}</div>
+                  <div><strong>Completed:</strong> {formatListValue(u.completed)}</div>
+                  <div><strong>Working:</strong> {formatListValue(u.working)}</div>
+                  <div><strong>Blockers:</strong> {formatListValue(u.blockers)}</div>
                 </div>
               </div>
             ))}

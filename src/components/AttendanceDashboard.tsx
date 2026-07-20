@@ -50,7 +50,10 @@ const DAILY_TARGET_SECONDS = 8 * 60 * 60;
 export const AttendanceDashboard: React.FC = () => {
   const { attendance, users, currentUser, recordAttendanceEvent } = usePulse();
   const role = currentUser?.role?.toLowerCase() || '';
-  const apiBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '') || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
+  const fallbackApiBase = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    ? 'http://localhost:5000'
+    : 'https://update-tool.onrender.com';
+  const apiBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '') || fallbackApiBase;
   const isEmployee = role === 'employee';
   const canViewTeamAttendance = role === 'admin' || role === 'executive' || role === 'employer';
   const [selectedStatus, setSelectedStatus] = useState('All');
