@@ -275,7 +275,7 @@ const mergeUsersLists = (existingUsers: User[], incomingUsers: User[]) => {
 const mergeUpdatesRecords = (existing: UpdateRecord[], incoming: UpdateRecord[]) => {
   const byKey = new Map<string, UpdateRecord>();
   const merged = [...(existing || []), ...(incoming || [])]
-    .filter((entry): entry is UpdateRecord => Boolean(entry && entry.id));
+    .filter((entry): entry is UpdateRecord => Boolean(entry && (entry.id || entry.employeeId)));
 
   merged.forEach((entry) => {
     const key = String(entry.id || `${entry.employeeId || 'unknown'}::${entry.date || ''}::${entry.timestamp || ''}`).trim();
@@ -284,6 +284,14 @@ const mergeUpdatesRecords = (existing: UpdateRecord[], incoming: UpdateRecord[])
       ? {
           ...previous,
           ...entry,
+          id: previous.id || entry.id || key,
+          employeeId: entry.employeeId || previous.employeeId || '',
+          employeeName: entry.employeeName || previous.employeeName || '',
+          department: entry.department || previous.department || 'General',
+          pod: entry.pod || previous.pod || 'India Pod',
+          projectName: entry.projectName || previous.projectName || '',
+          date: entry.date || previous.date || '',
+          timestamp: entry.timestamp || previous.timestamp || '',
           comments: Array.isArray(entry.comments) ? entry.comments : Array.isArray(previous.comments) ? previous.comments : [],
           completed: Array.isArray(entry.completed) ? entry.completed : Array.isArray(previous.completed) ? previous.completed : [],
           working: Array.isArray(entry.working) ? entry.working : Array.isArray(previous.working) ? previous.working : [],
@@ -292,6 +300,7 @@ const mergeUpdatesRecords = (existing: UpdateRecord[], incoming: UpdateRecord[])
         }
       : {
           ...entry,
+          id: entry.id || key,
           comments: Array.isArray(entry.comments) ? entry.comments : []
         };
 
@@ -304,7 +313,7 @@ const mergeUpdatesRecords = (existing: UpdateRecord[], incoming: UpdateRecord[])
 const mergeAttendanceRecords = (existing: AttendanceRecord[], incoming: AttendanceRecord[]) => {
   const byKey = new Map<string, AttendanceRecord>();
   const merged = [...(existing || []), ...(incoming || [])]
-    .filter((entry): entry is AttendanceRecord => Boolean(entry && entry.userId));
+    .filter((entry): entry is AttendanceRecord => Boolean(entry && (entry.userId || entry.email || entry.employeeName)));
 
   merged.forEach((entry) => {
     const key = `${String(entry.userId || '').trim()}::${String(entry.date || '').trim()}::${String(entry.email || '').trim()}`;
@@ -314,6 +323,11 @@ const mergeAttendanceRecords = (existing: AttendanceRecord[], incoming: Attendan
           ...previous,
           ...entry,
           attendanceId: entry.attendanceId || previous.attendanceId || `att-${entry.userId || 'unknown'}-${entry.date || 'unknown'}`,
+          userId: entry.userId || previous.userId || '',
+          employeeName: entry.employeeName || previous.employeeName || '',
+          email: entry.email || previous.email || '',
+          department: entry.department || previous.department || '',
+          date: entry.date || previous.date || '',
           loginTime: entry.loginTime || previous.loginTime || '',
           logoutTime: entry.logoutTime || previous.logoutTime || '',
           workingHours: entry.workingHours || previous.workingHours || '0h',
@@ -338,7 +352,7 @@ const mergeAttendanceRecords = (existing: AttendanceRecord[], incoming: Attendan
     byKey.set(key, mergedEntry);
   });
 
-  return Array.from(byKey.values());
+  return Array.from(byKey.values()).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 };
 
 export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -1310,12 +1324,16 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Query 4: Show specific employee updates
     const matchedEmployee = activeEmployees.find(u => lower.includes(u.name.toLowerCase()) || lower.includes(u.name.split(' ')[0].toLowerCase()));
     if (matchedEmployee) {
-      const empUpdates = updates.filter(u => u.employeeId === matchedEmployee.id).slice(0, 3);
-      if (empUpdates.length === 0) {
+      const empUpdates = updates
+        .filter((u) => u.employeeId === matchedEmployee.id)
+        .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+      const todaysUpdates = empUpdates.filter((u) => u.date === today);
+      const relevantUpdates = todaysUpdates.length > 0 ? todaysUpdates : empUpdates.slice(0, 3);
+      if (relevantUpdates.length === 0) {
         return `**${matchedEmployee.name}** (${matchedEmployee.department}) has not submitted any updates yet.`;
       }
       return `### Status Logs for ${matchedEmployee.name}\n\n` +
-        empUpdates.map(u => 
+        relevantUpdates.slice(0, 3).map(u => 
           `**Date: ${u.date}** (Priority: ${u.priority.toUpperCase()})\n` +
           `- **Completed:** ${u.completed.join('; ')}\n` +
           `- **Working:** ${u.working.join('; ')}\n` +
