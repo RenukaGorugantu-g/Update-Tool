@@ -23,7 +23,7 @@ const defaultFrontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 const isLocalServer = !process.env.RENDER && !process.env.RENDER_SERVICE_ID && process.env.NODE_ENV !== 'production';
 const configuredRedirectUri = process.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_REDIRECT_URI_CALLBACK;
 const isInvalidProductionRedirectUri = !configuredRedirectUri || configuredRedirectUri === 'https://developers.google.com/oauthplayground' || (!isLocalServer && configuredRedirectUri.includes('localhost'));
-const redirectUri = isInvalidProductionRedirectUri ? 'https://update-tool.onrender.com/auth/google/callback' : configuredRedirectUri || 'http://localhost:5000/auth/google/callback';
+const redirectUri = configuredRedirectUri || (isInvalidProductionRedirectUri ? 'https://update-tool.onrender.com/auth/google/callback' : 'http://localhost:5000/auth/google/callback');
 
 const tokenStore = createTokenStore();
 const updatesStore = createUpdatesStore();
@@ -224,9 +224,35 @@ const getGoogleUserProfile = async (accessToken) => {
   };
 };
 
+const resolveSenderEmail = async (preferredSenderEmail) => {
+  const candidates = [
+    String(preferredSenderEmail || '').trim().toLowerCase(),
+    String(process.env.GMAIL_SENDER_EMAIL || '').trim().toLowerCase(),
+    String(process.env.DEFAULT_GMAIL_SENDER || '').trim().toLowerCase()
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    const account = await tokenStore.getToken(candidate);
+    if (account?.refreshToken) {
+      return candidate;
+    }
+  }
+
+  const connectedAccounts = Object.keys(await tokenStore.getAll() || {});
+  for (const candidate of connectedAccounts) {
+    const account = await tokenStore.getToken(candidate);
+    if (account?.refreshToken) {
+      return candidate;
+    }
+  }
+
+  return candidates[0] || connectedAccounts[0] || '';
+};
+
 // Send an email using the stored refresh token for the selected sender account.
 const sendGmailMessage = async ({ senderEmail, to, subject, message }) => {
-  const account = await tokenStore.getToken(senderEmail);
+  const resolvedSenderEmail = await resolveSenderEmail(senderEmail);
+  const account = resolvedSenderEmail ? await tokenStore.getToken(resolvedSenderEmail) : null;
   if (!account?.refreshToken) {
     throw new Error('Google account not connected.');
   }
@@ -238,7 +264,7 @@ const sendGmailMessage = async ({ senderEmail, to, subject, message }) => {
 
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
     const emailLines = [
-      `From: ${senderEmail}`,
+      `From: ${resolvedSenderEmail}`,
       `To: ${to}`,
       `Subject: ${subject}`,
       'Content-Type: text/plain; charset=UTF-8',
@@ -370,6 +396,7 @@ app.get('/auth/google/callback', async (req, res) => {
     const redirectTarget = new URL(returnTo, defaultFrontendUrl);
     redirectTarget.searchParams.set('gmail', 'connected');
     redirectTarget.searchParams.set('gmailEmail', profile.email);
+    redirectTarget.searchParams.set('redirectUri', redirectUri);
     return res.redirect(redirectTarget.toString());
   } catch (error) {
     console.error('google callback error:', error);
@@ -494,7 +521,7 @@ app.get('/api/attendance/export', async (req, res) => {
       const matchesUserId = !userId || String(entry.userId || '').toLowerCase() === String(userId).toLowerCase();
       const matchesEmail = !email || String(entry.email || '').toLowerCase() === String(email).toLowerCase();
       const matchesDate = !date || String(entry.date || '').toLowerCase() === String(date).toLowerCase();
-      return matchesUserId && matchesEmail && matchesDate;
+      return matchesUserId && matchesEmail && (date ? matchesDate : true);
     });
     const header = 'Employee Name,Email,Department,Date,Login,Logout,Working Hours,Idle Time,Productive Hours,Attendance Status,Office/Remote,IP Address,Browser,Operating System,Device\n';
     const rows = filtered.map((entry) => {

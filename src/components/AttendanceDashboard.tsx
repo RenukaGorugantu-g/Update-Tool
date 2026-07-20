@@ -409,7 +409,7 @@ export const AttendanceDashboard: React.FC = () => {
       </section>
 
       {isEmployee ? (
-        <section className="glass-card" style={{ padding: '18px', display: 'grid', gap: '14px' }}>
+        <section className="glass-card" style={{ padding: '18px', display: 'grid', gap: '14px', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(5, 150, 105, 0.16), rgba(2, 8, 23, 0.95))', border: '1px solid rgba(52, 211, 153, 0.28)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Clocking</div>
@@ -425,9 +425,10 @@ export const AttendanceDashboard: React.FC = () => {
             </div>
           </div>
           <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-            <div className="surface-card" style={{ padding: '14px' }}>
+            <div className="surface-card" style={{ padding: '16px', minHeight: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Session</div>
-              <div style={{ fontSize: '1.45rem', fontWeight: 800, marginTop: '6px' }}>{sessionActive ? formatDurationLabel(totalSessionSeconds) : formatDurationLabel(sessionAccumulatedSeconds)}</div>
+              <div style={{ fontSize: '2rem', fontWeight: 800, marginTop: '6px', color: sessionActive ? '#34d399' : '#f59e0b' }}>{sessionActive ? formatDurationLabel(totalSessionSeconds) : formatDurationLabel(sessionAccumulatedSeconds)}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '6px' }}>{sessionActive ? 'Live timer running' : 'Timer paused'}</div>
             </div>
             <div className="surface-card" style={{ padding: '14px' }}>
               <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Clock In</div>
@@ -442,7 +443,7 @@ export const AttendanceDashboard: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '1.1rem', fontWeight: 800, marginTop: '6px' }}><MapPin size={14} /> {sessionLocation}</div>
             </div>
           </div>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem' }}>{attendanceMessage}</div>
+          <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', padding: '8px 10px', borderRadius: '10px', background: 'rgba(15, 23, 42, 0.4)', border: '1px solid rgba(255,255,255,0.06)' }}>{attendanceMessage}</div>
         </section>
       ) : null}
 

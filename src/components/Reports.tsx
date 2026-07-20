@@ -27,13 +27,14 @@ const Reports: React.FC = () => {
   };
 
   const rowsForExport = filteredUpdates.map((u) => ({
-    Date: u.date,
+    Date: u.date || u.timestamp?.slice(0, 10) || '',
     Employee: u.employeeName,
     Project: u.projectName,
     Completed: Array.isArray(u.completed) ? u.completed.join(' | ') : u.completed || '',
     Working: Array.isArray(u.working) ? u.working.join(' | ') : u.working || '',
     Blockers: Array.isArray(u.blockers) ? u.blockers.join(' | ') : u.blockers || '',
-    Priority: u.priority
+    Priority: u.priority,
+    Timestamp: u.timestamp || ''
   }));
 
   const openUser = (employeeId: string) => {

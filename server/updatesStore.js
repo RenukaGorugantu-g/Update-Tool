@@ -7,7 +7,7 @@ const defaultPath = path.resolve(
   'updates.json'
 );
 
-const sprintRetentionDays = 14;
+const sprintRetentionDays = Number.parseInt(process.env.UPDATE_RETENTION_DAYS || process.env.SPRINT_RETENTION_DAYS || '0', 10);
 
 const ensureDir = async (filePath) => {
   const dir = path.dirname(filePath);
@@ -33,7 +33,12 @@ const writeStore = async (filePath, data) => {
 };
 
 const pruneItems = (items, days = sprintRetentionDays) => {
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const retentionDays = Number.isFinite(days) ? Number(days) : 0;
+  if (retentionDays <= 0) {
+    return items;
+  }
+
+  const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
 
   return items.filter((update) => {
     const timestamp = Date.parse(

@@ -39,3 +39,33 @@ test('updates store persists comments for an employee update', async () => {
   assert.equal(items[0].comments[0].content, 'Nice progress');
   assert.equal(items[0].comments[0].sentVia.chat, true);
 });
+
+test('updates store keeps historical entries instead of dropping them during readback', async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'updates-tool-store-history-'));
+  const storageFile = path.join(tempDir, 'updates.json');
+  const store = createUpdatesStore(storageFile);
+
+  const oldTimestamp = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  await store.save({
+    id: 'old-entry',
+    employeeId: 'emp-2',
+    employeeName: 'Asha',
+    department: 'Operations',
+    pod: 'India Pod',
+    date: '2026-06-01',
+    completed: ['Reviewed reports'],
+    working: ['Archived backlog'],
+    blockers: ['None'],
+    priority: 'medium',
+    projectName: 'Ops Report',
+    files: [],
+    timestamp: oldTimestamp,
+    createdAt: oldTimestamp,
+    comments: []
+  });
+
+  const items = await store.getAll();
+  assert.equal(items.length, 1);
+  assert.equal(items[0].id, 'old-entry');
+});

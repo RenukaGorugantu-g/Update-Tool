@@ -33,7 +33,7 @@ test('employee updates send a formatted Google Chat stand-up message', async () 
 
   assert.equal(result.chatStatus, 'sent');
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].spaceId, 'space_development');
+  assert.equal(calls[0].spaceId, 'space_mels');
   assert.equal(typeof calls[0].payload, 'object');
   assert.match(calls[0].payload.text, /Daily Stand-up/i);
   assert.match(calls[0].payload.text, /Renuka/);

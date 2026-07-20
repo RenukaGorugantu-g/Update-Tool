@@ -272,6 +272,35 @@ const mergeUsersLists = (existingUsers: User[], incomingUsers: User[]) => {
   return merged;
 };
 
+const mergeUpdatesRecords = (existing: UpdateRecord[], incoming: UpdateRecord[]) => {
+  const byKey = new Map<string, UpdateRecord>();
+  const merged = [...(existing || []), ...(incoming || [])]
+    .filter((entry): entry is UpdateRecord => Boolean(entry && entry.id));
+
+  merged.forEach((entry) => {
+    const key = String(entry.id || `${entry.employeeId || 'unknown'}::${entry.date || ''}::${entry.timestamp || ''}`).trim();
+    const previous = byKey.get(key);
+    const mergedEntry = previous
+      ? {
+          ...previous,
+          ...entry,
+          comments: Array.isArray(entry.comments) ? entry.comments : Array.isArray(previous.comments) ? previous.comments : [],
+          completed: Array.isArray(entry.completed) ? entry.completed : Array.isArray(previous.completed) ? previous.completed : [],
+          working: Array.isArray(entry.working) ? entry.working : Array.isArray(previous.working) ? previous.working : [],
+          blockers: Array.isArray(entry.blockers) ? entry.blockers : Array.isArray(previous.blockers) ? previous.blockers : [],
+          files: Array.isArray(entry.files) ? entry.files : Array.isArray(previous.files) ? previous.files : []
+        }
+      : {
+          ...entry,
+          comments: Array.isArray(entry.comments) ? entry.comments : []
+        };
+
+    byKey.set(key, mergedEntry);
+  });
+
+  return Array.from(byKey.values()).sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+};
+
 const mergeAttendanceRecords = (existing: AttendanceRecord[], incoming: AttendanceRecord[]) => {
   const byKey = new Map<string, AttendanceRecord>();
   const merged = [...(existing || []), ...(incoming || [])]
@@ -553,18 +582,25 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Load persisted updates from backend if available
   useEffect(() => {
     if (!apiBase) return;
+    let cancelled = false;
     (async () => {
       try {
         const resp = await fetch(`${apiBase}/api/updates`);
         const json = await resp.json().catch(() => null);
-        if (json?.success && Array.isArray(json.updates)) {
-          setUpdates(json.updates as UpdateRecord[]);
-          localStorage.setItem('pulse-updates', JSON.stringify(json.updates));
+        if (!cancelled && json?.success && Array.isArray(json.updates)) {
+          setUpdates((prev) => {
+            const next = mergeUpdatesRecords(prev, json.updates as UpdateRecord[]);
+            localStorage.setItem('pulse-updates', JSON.stringify(next));
+            return next;
+          });
         }
       } catch (error) {
         // ignore and continue with local state
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [apiBase]);
 
   // Load attendance + templates & reminders from backend
@@ -576,8 +612,11 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const attendanceResp = await fetch(`${apiBase}/api/attendance`);
         const attendanceJson = await attendanceResp.json().catch(() => null);
         if (!cancelled && attendanceJson?.success && Array.isArray(attendanceJson.attendance)) {
-          setAttendance((prev) => mergeAttendanceRecords(prev, attendanceJson.attendance));
-          localStorage.setItem('pulse-attendance', JSON.stringify(mergeAttendanceRecords([], attendanceJson.attendance)));
+          setAttendance((prev) => {
+            const next = mergeAttendanceRecords(prev, attendanceJson.attendance);
+            localStorage.setItem('pulse-attendance', JSON.stringify(next));
+            return next;
+          });
         }
       } catch (error) {
         console.warn('Unable to load attendance from backend, using local data:', error);
@@ -674,6 +713,13 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       localStorage.setItem('pulse-attendance', JSON.stringify(nextList));
       return nextList;
     });
+    trackEvent('attendance_recorded', {
+      employeeId: currentUser.id,
+      employeeName: currentUser.name,
+      date: entry.date,
+      status: attendanceEntry.status,
+      officeRemote: attendanceEntry.officeRemote
+    });
 
     if (!apiBase) return;
     try {
@@ -693,7 +739,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const stored = localStorage.getItem('pulse-analytics');
       const list = stored ? JSON.parse(stored) : [];
       list.unshift(item);
-      localStorage.setItem('pulse-analytics', JSON.stringify(list.slice(0, 200)));
+      localStorage.setItem('pulse-analytics', JSON.stringify(list.slice(0, 500)));
       // Also add to integration logs for quick visibility
       setIntegrationLogs(prev => [ { id: item.id, type: 'chat', timestamp: item.timestamp, recipient: name, subject: undefined, body: JSON.stringify(payload || {}), payloadJSON: JSON.stringify(payload || {}) }, ...prev ]);
       console.log('Pulse Event:', name, payload || {});
@@ -797,6 +843,13 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } else {
         return [record, ...prev];
       }
+    });
+    trackEvent('employee_update_submitted', {
+      employeeId: currentUser.id,
+      employeeName: currentUser.name,
+      date: today,
+      projectName: record.projectName,
+      blockers: record.blockers
     });
 
     let deliveryStatus: 'ok' | 'partial' | 'failed' = 'ok';
@@ -931,6 +984,12 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const copy = [...prev];
       copy[updateIndex] = updated;
       return copy;
+    });
+    trackEvent('comment_reply_sent', {
+      updateId,
+      employeeId: targetUpdate.employeeId,
+      authorName: currentUser.name,
+      sentVia
     });
 
     (async () => {
@@ -1200,6 +1259,12 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const today = new Date().toISOString().split('T')[0];
     const todayUpdates = updates.filter(u => u.date === today);
     const activeEmployees = users.filter(u => u.role === 'employee' && u.active);
+
+    trackEvent('ai_search', {
+      query,
+      employeeName: lower.match(/show\s+([a-zA-Z\s]+)'s/i)?.[1] || undefined,
+      timestamp: new Date().toISOString()
+    });
 
     // Query 1: Who has not updated?
     if (lower.includes('not updated') || lower.includes('pending updates') || lower.includes('who has not')) {
