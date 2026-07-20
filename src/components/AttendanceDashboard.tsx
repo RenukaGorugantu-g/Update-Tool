@@ -59,6 +59,7 @@ export const AttendanceDashboard: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
+  const [selectedAttendanceIds, setSelectedAttendanceIds] = useState<string[]>([]);
   const [sessionActive, setSessionActive] = useState(false);
   const [sessionElapsed, setSessionElapsed] = useState(0);
   const [sessionAccumulatedSeconds, setSessionAccumulatedSeconds] = useState(0);
@@ -237,6 +238,8 @@ export const AttendanceDashboard: React.FC = () => {
     }
   }, [canViewTeamAttendance, employeeOptions, selectedEmployeeId]);
 
+  const getAttendanceRowKey = (entry: any) => entry.attendanceId || `${entry.userId || entry.employeeName || 'unknown'}-${entry.date || entry.createdAt?.slice(0, 10) || 'na'}-${entry.loginTime || ''}-${entry.logoutTime || ''}`;
+
   const employeeEntries = useMemo(() => {
     if (!currentUser) return [] as any[];
     return attendance
@@ -261,6 +264,19 @@ export const AttendanceDashboard: React.FC = () => {
   const absentCount = visibleEntries.filter((entry) => entry.status === 'Absent').length;
   const officeCount = visibleEntries.filter((entry) => entry.officeRemote === 'Office').length;
   const remoteCount = visibleEntries.filter((entry) => entry.officeRemote === 'Remote').length;
+
+  const toggleAttendanceSelection = (rowKey: string) => {
+    setSelectedAttendanceIds((prev) => (prev.includes(rowKey) ? prev.filter((value) => value !== rowKey) : [...prev, rowKey]));
+  };
+
+  const selectVisibleAttendance = () => {
+    const keys = visibleEntries.map((entry) => getAttendanceRowKey(entry)).filter(Boolean);
+    setSelectedAttendanceIds(keys);
+  };
+
+  const clearAttendanceSelection = () => {
+    setSelectedAttendanceIds([]);
+  };
 
   const employeeSummary = useMemo(() => {
     const groups: Record<string, any> = {};
@@ -375,18 +391,19 @@ export const AttendanceDashboard: React.FC = () => {
   };
 
   const exportSelectedEmployee = async () => {
-    const rows = selectedEmployeeId === 'all'
-      ? attendance.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-      : attendance.filter((item) => matchesEmployeeSelection(item, selectedEmployeeId)).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-    const filename = selectedEmployeeId === 'all'
-      ? `attendance-logs-all-history`
-      : `${(employeeOptions.find((option) => option.value === selectedEmployeeId)?.label || 'employee').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-attendance`;
-    if (apiBase) {
+    const rows = visibleEntries.filter((entry) => {
+      const rowKey = getAttendanceRowKey(entry);
+      return selectedAttendanceIds.length === 0 ? true : selectedAttendanceIds.includes(rowKey);
+    }).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const filename = selectedAttendanceIds.length > 0
+      ? `attendance-selected-rows`
+      : `attendance-logs-visible`;
+    if (apiBase && rows.length > 0 && selectedAttendanceIds.length === 0) {
       try {
         const params = new URLSearchParams();
+        const selectedOption = employeeOptions.find((option) => option.value === selectedEmployeeId);
+        const selectedValue = String(selectedOption?.value || selectedEmployeeId || '').trim();
         if (selectedEmployeeId !== 'all') {
-          const selectedOption = employeeOptions.find((option) => option.value === selectedEmployeeId);
-          const selectedValue = String(selectedOption?.value || selectedEmployeeId || '').trim();
           if (!selectedValue) {
             params.set('userId', selectedEmployeeId);
           } else if (selectedValue.includes('@')) {
@@ -496,9 +513,17 @@ export const AttendanceDashboard: React.FC = () => {
           </div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             {canViewTeamAttendance ? (
-              <button type="button" onClick={exportSelectedEmployee} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Download size={14} /> Download logs
-              </button>
+              <>
+                <button type="button" onClick={selectVisibleAttendance} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Users size={14} /> Select visible
+                </button>
+                <button type="button" onClick={clearAttendanceSelection} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <UserRound size={14} /> Clear
+                </button>
+                <button type="button" onClick={() => void exportSelectedEmployee()} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Download size={14} /> Download logs
+                </button>
+              </>
             ) : null}
           </div>
         </div>
@@ -759,7 +784,28 @@ export const AttendanceDashboard: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                {!isEmployee ? <th style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>Employee</th> : null}
+                {!isEmployee ? (
+                  <>
+                    <th style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>
+                      <input
+                        type="checkbox"
+                        checked={visibleEntries.length > 0 && visibleEntries.every((entry) => selectedAttendanceIds.includes(getAttendanceRowKey(entry)))}
+                        onChange={() => {
+                          const allVisibleKeys = visibleEntries.map((entry) => getAttendanceRowKey(entry));
+                          setSelectedAttendanceIds((prev) => {
+                            const hasAll = allVisibleKeys.every((key) => prev.includes(key));
+                            if (hasAll) {
+                              return prev.filter((key) => !allVisibleKeys.includes(key));
+                            }
+                            return Array.from(new Set([...prev, ...allVisibleKeys]));
+                          });
+                        }}
+                        style={{ accentColor: '#34d399' }}
+                      />
+                    </th>
+                    <th style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>Employee</th>
+                  </>
+                ) : null}
                 <th style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>Date</th>
                 <th style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>Login</th>
                 <th style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>Logout</th>
@@ -776,16 +822,27 @@ export const AttendanceDashboard: React.FC = () => {
                 </td></tr>
               ) : visibleEntries.map((entry) => {
                 const chip = statusStyles[entry.status || 'Present'] || statusStyles.Present;
+                const rowKey = getAttendanceRowKey(entry);
+                const isSelected = selectedAttendanceIds.includes(rowKey);
                 return (
                   <tr
-                    key={entry.attendanceId}
+                    key={rowKey}
                     style={{ borderLeft: `3px solid ${chip.accent}`, transition: 'background 0.15s ease' }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(148, 163, 184, 0.06)'; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; }}
                   >
                     {!isEmployee ? (
-                      <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <>
+                        <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleAttendanceSelection(rowKey)}
+                            style={{ accentColor: '#34d399' }}
+                          />
+                        </td>
+                        <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <div style={{
                             width: '26px',
                             height: '26px',
@@ -801,9 +858,10 @@ export const AttendanceDashboard: React.FC = () => {
                           }}>
                             {getInitials(entry.employeeName || currentUser?.name)}
                           </div>
-                          {entry.employeeName || currentUser?.name}
-                        </div>
-                      </td>
+                            {entry.employeeName || currentUser?.name}
+                          </div>
+                        </td>
+                      </>
                     ) : null}
                     <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>{entry.date || entry.createdAt?.slice(0, 10) || '--'}</td>
                     <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)', color: entry.loginTime ? '#34d399' : 'var(--text-muted)' }}>{entry.loginTime || '--'}</td>
