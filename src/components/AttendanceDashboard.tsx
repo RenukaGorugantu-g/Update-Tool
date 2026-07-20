@@ -521,7 +521,7 @@ export const AttendanceDashboard: React.FC = () => {
                   <UserRound size={14} /> Clear
                 </button>
                 <button type="button" onClick={() => void exportSelectedEmployee()} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Download size={14} /> Download logs
+                  <Download size={14} /> Download selected
                 </button>
               </>
             ) : null}
