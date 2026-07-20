@@ -1,14 +1,51 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { usePulse } from '../context/PulseContext';
-import { CalendarDays, Clock3, Download, LogIn, LogOut, MapPin, Monitor, Search, Sparkles, Users, Filter, UserRound } from 'lucide-react';
+import {
+  CalendarDays,
+  Clock3,
+  Download,
+  LogIn,
+  LogOut,
+  MapPin,
+  Monitor,
+  Search,
+  Sparkles,
+  Users,
+  Filter,
+  UserRound,
+  Zap,
+  TrendingUp,
+  BarChart3
+} from 'lucide-react';
 
-const statusStyles: Record<string, { bg: string; color: string }> = {
-  Present: { bg: 'rgba(34, 197, 94, 0.14)', color: '#34d399' },
-  Late: { bg: 'rgba(249, 115, 22, 0.16)', color: '#fb923c' },
-  'Half Day': { bg: 'rgba(59, 130, 246, 0.14)', color: '#60a5fa' },
-  'Auto Logout': { bg: 'rgba(236, 72, 153, 0.14)', color: '#f472b6' },
-  Absent: { bg: 'rgba(248, 113, 113, 0.16)', color: '#f87171' }
+const statusStyles: Record<string, { bg: string; color: string; accent: string }> = {
+  Present: { bg: 'rgba(34, 197, 94, 0.14)', color: '#34d399', accent: '#22c55e' },
+  Late: { bg: 'rgba(249, 115, 22, 0.16)', color: '#fb923c', accent: '#f97316' },
+  'Half Day': { bg: 'rgba(59, 130, 246, 0.14)', color: '#60a5fa', accent: '#3b82f6' },
+  'Auto Logout': { bg: 'rgba(236, 72, 153, 0.14)', color: '#f472b6', accent: '#ec4899' },
+  Absent: { bg: 'rgba(248, 113, 113, 0.16)', color: '#f87171', accent: '#ef4444' }
 };
+
+const AVATAR_PALETTE = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316'];
+
+const getInitials = (name?: string) => {
+  const clean = (name || '').trim();
+  if (!clean) return '?';
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
+
+const getAvatarColor = (key?: string) => {
+  const str = String(key || 'x');
+  let hash = 0;
+  for (let i = 0; i < str.length; i += 1) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+};
+
+const DAILY_TARGET_SECONDS = 8 * 60 * 60;
 
 export const AttendanceDashboard: React.FC = () => {
   const { attendance, users, currentUser, recordAttendanceEvent } = usePulse();
@@ -27,8 +64,14 @@ export const AttendanceDashboard: React.FC = () => {
   const [sessionLocation, setSessionLocation] = useState<'Office' | 'Remote'>('Remote');
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null);
   const [attendanceMessage, setAttendanceMessage] = useState('Ready to clock in');
+  const [clockNow, setClockNow] = useState(() => new Date());
   const currentSessionKey = currentUser?.id ? `pulse-attendance-session-${currentUser.id}` : 'pulse-attendance-session';
   const today = new Date().toISOString().split('T')[0];
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(new Date()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -116,7 +159,10 @@ export const AttendanceDashboard: React.FC = () => {
     return `${hrs}h ${mins}m ${secs}s`;
   };
 
+  const formatShortHours = (minutes: number) => `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+
   const totalSessionSeconds = sessionActive ? sessionAccumulatedSeconds + sessionElapsed : sessionAccumulatedSeconds;
+  const sessionProgressPercent = Math.min(100, Math.round((totalSessionSeconds / DAILY_TARGET_SECONDS) * 100));
 
   const statusOptions = ['All', 'Present', 'Late', 'Half Day', 'Auto Logout', 'Absent'];
 
@@ -228,13 +274,45 @@ export const AttendanceDashboard: React.FC = () => {
       groups[key].rows.push(entry);
     });
     return Object.values(groups)
-      .map((group: any) => ({
-        ...group,
-        present: group.rows.filter((row: any) => ['Present', 'Late', 'Half Day', 'Auto Logout'].includes(row.status)).length,
-        hours: group.rows.reduce((sum: number, row: any) => sum + parseMinutes(row.workingHours), 0)
-      }))
+      .map((group: any) => {
+        const todaysRows = group.rows.filter((row: any) => (row.date || row.createdAt?.slice(0, 10)) === today);
+        const loginsToday = todaysRows.filter((row: any) => row.loginTime).length;
+        const logoutsToday = todaysRows.filter((row: any) => row.logoutTime).length;
+        return {
+          ...group,
+          present: group.rows.filter((row: any) => ['Present', 'Late', 'Half Day', 'Auto Logout'].includes(row.status)).length,
+          hours: group.rows.reduce((sum: number, row: any) => sum + parseMinutes(row.workingHours), 0),
+          activeNow: loginsToday > logoutsToday
+        };
+      })
       .sort((a, b) => b.hours - a.hours);
-  }, [visibleEntries]);
+  }, [visibleEntries, today]);
+
+  const maxSummaryHours = useMemo(() => Math.max(1, ...employeeSummary.map((card: any) => card.hours)), [employeeSummary]);
+
+  const weeklyChartData = useMemo(() => {
+    const base = isEmployee
+      ? employeeEntries
+      : selectedEmployeeId === 'all'
+        ? attendance
+        : attendance.filter((entry) => matchesEmployeeSelection(entry, selectedEmployeeId));
+
+    const days: { key: string; label: string; minutes: number; isToday: boolean }[] = [];
+    for (let i = 6; i >= 0; i -= 1) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split('T')[0];
+      const label = d.toLocaleDateString(undefined, { weekday: 'short' });
+      const minutes = base
+        .filter((entry) => (entry.date || entry.createdAt?.slice(0, 10)) === key)
+        .reduce((sum, entry) => sum + parseMinutes(entry.workingHours), 0);
+      days.push({ key, label, minutes, isToday: key === today });
+    }
+    return days;
+  }, [attendance, employeeEntries, isEmployee, selectedEmployeeId, today]);
+
+  const maxWeeklyMinutes = useMemo(() => Math.max(60, ...weeklyChartData.map((d) => d.minutes)), [weeklyChartData]);
+  const weeklyTotalMinutes = useMemo(() => weeklyChartData.reduce((sum, d) => sum + d.minutes, 0), [weeklyChartData]);
 
   const exportRows = (rows: any[], filename: string) => {
     const header = 'Employee Name,Email,Department,Date,Login,Logout,Working Hours,Status,Office/Remote,IP Address,Device,Browser,OS\n';
@@ -305,7 +383,16 @@ export const AttendanceDashboard: React.FC = () => {
         const params = new URLSearchParams();
         if (selectedEmployeeId !== 'all') {
           const selectedOption = employeeOptions.find((option) => option.value === selectedEmployeeId);
-          params.set('userId', selectedOption?.value || selectedEmployeeId);
+          const selectedValue = String(selectedOption?.value || selectedEmployeeId || '').trim();
+          if (!selectedValue) {
+            params.set('userId', selectedEmployeeId);
+          } else if (selectedValue.includes('@')) {
+            params.set('email', selectedValue.toLowerCase());
+          } else if (/^(emp-|u-)/i.test(selectedValue)) {
+            params.set('userId', selectedValue);
+          } else {
+            params.set('employeeName', selectedValue);
+          }
         }
         const response = await fetch(`${apiBase}/api/attendance/export${params.toString() ? `?${params.toString()}` : ''}`);
         if (response.ok) {
@@ -387,13 +474,19 @@ export const AttendanceDashboard: React.FC = () => {
 
   return (
     <div className="fade-in" style={{ padding: '8px 0', display: 'grid', gap: '18px' }}>
-      <section className="glass-card" style={{ padding: '20px 22px', border: '1px solid rgba(34, 197, 94, 0.24)', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(16, 185, 129, 0.22), rgba(30, 41, 59, 0.92))', display: 'grid', gap: '12px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+      {/* Hero */}
+      <section className="glass-card" style={{ padding: '22px 24px', border: '1px solid rgba(148, 163, 184, 0.22)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)', display: 'grid', gap: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px' }}>
           <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 10px', borderRadius: '999px', background: 'rgba(34, 197, 94, 0.16)', color: '#86efac', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              <Sparkles size={14} /> Attendance Hub
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 10px', borderRadius: '999px', background: 'rgba(34, 197, 94, 0.16)', color: '#86efac', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <Sparkles size={14} /> Attendance Hub
+              </div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 10px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.1)', color: 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: 600 }}>
+                <Clock3 size={13} /> {clockNow.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} · {clockNow.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+              </div>
             </div>
-            <h2 style={{ margin: '8px 0 4px', fontSize: '1.45rem', fontWeight: 800 }}>Track time, presence, and attendance in one place</h2>
+            <h2 style={{ margin: '10px 0 4px', fontSize: '1.45rem', fontWeight: 800 }}>Track time, presence, and attendance in one place</h2>
             <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
               {isEmployee ? 'Log your work sessions and review your attendance history below.' : 'Monitor daily and weekly team presence with filters, calendar views, and CSV exports.'}
             </p>
@@ -409,46 +502,107 @@ export const AttendanceDashboard: React.FC = () => {
       </section>
 
       {isEmployee ? (
-        <section className="glass-card" style={{ padding: '18px', display: 'grid', gap: '14px', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(5, 150, 105, 0.16), rgba(2, 8, 23, 0.95))', border: '1px solid rgba(52, 211, 153, 0.28)' }}>
+        <section className="glass-card" style={{ padding: '18px', display: 'grid', gap: '16px', border: '1px solid rgba(148, 163, 184, 0.18)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Clocking</div>
               <h3 style={{ margin: '6px 0 0', fontSize: '1rem', fontWeight: 800 }}>Today&apos;s attendance tracker</h3>
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => void handleAttendanceAction('login')} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #0f766e 0%, #34d399 100%)', color: '#fff', border: 'none' }}>
+              <button type="button" onClick={() => void handleAttendanceAction('login')} disabled={sessionActive} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.16)', color: '#d1fae5', border: '1px solid rgba(16, 185, 129, 0.28)', opacity: sessionActive ? 0.5 : 1, cursor: sessionActive ? 'not-allowed' : 'pointer' }}>
                 <LogIn size={14} /> Clock In
               </button>
-              <button type="button" onClick={() => void handleAttendanceAction('logout')} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #b91c1c 0%, #f87171 100%)', color: '#fff', border: 'none' }}>
+              <button type="button" onClick={() => void handleAttendanceAction('logout')} disabled={!sessionActive} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(248, 113, 113, 0.14)', color: '#fee2e2', border: '1px solid rgba(248, 113, 113, 0.24)', opacity: !sessionActive ? 0.5 : 1, cursor: !sessionActive ? 'not-allowed' : 'pointer' }}>
                 <LogOut size={14} /> Clock Out
               </button>
             </div>
           </div>
-          <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-            <div className="surface-card" style={{ padding: '16px', minHeight: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Session</div>
-              <div style={{ fontSize: '2rem', fontWeight: 800, marginTop: '6px', color: sessionActive ? '#34d399' : '#f59e0b' }}>{sessionActive ? formatDurationLabel(totalSessionSeconds) : formatDurationLabel(sessionAccumulatedSeconds)}</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '6px' }}>{sessionActive ? 'Live timer running' : 'Timer paused'}</div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 260px) 1fr', gap: '16px', alignItems: 'stretch' }}>
+            {/* Radial timer */}
+            <div className="surface-card" style={{ padding: '18px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+              <div style={{
+                position: 'relative',
+                width: '148px',
+                height: '148px',
+                borderRadius: '50%',
+                background: `conic-gradient(${sessionActive ? '#34d399' : '#f59e0b'} ${sessionProgressPercent}%, rgba(148, 163, 184, 0.14) ${sessionProgressPercent}% 100%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <div style={{
+                  width: '120px',
+                  height: '120px',
+                  borderRadius: '50%',
+                  background: 'radial-gradient(circle at 30% 20%, rgba(15,23,42,0.98), rgba(2,8,23,0.98))',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '2px'
+                }}>
+                  <span style={{ fontSize: '1.35rem', fontWeight: 800, color: sessionActive ? '#34d399' : '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>
+                    {formatDurationLabel(totalSessionSeconds)}
+                  </span>
+                  <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {sessionActive ? (<><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d399', display: 'inline-block', animation: 'pulse 1.6s ease-in-out infinite' }} /> live</>) : 'paused'}
+                  </span>
+                </div>
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center' }}>{sessionProgressPercent}% of 8h target</div>
             </div>
-            <div className="surface-card" style={{ padding: '14px' }}>
-              <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Clock In</div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 800, marginTop: '6px' }}>{sessionStart || '--:--'}</div>
-            </div>
-            <div className="surface-card" style={{ padding: '14px' }}>
-              <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Clock Out</div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 800, marginTop: '6px' }}>{sessionEnd || '--:--'}</div>
-            </div>
-            <div className="surface-card" style={{ padding: '14px' }}>
-              <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Location</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '1.1rem', fontWeight: 800, marginTop: '6px' }}><MapPin size={14} /> {sessionLocation}</div>
+
+            {/* Session info + weekly chart */}
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
+                <div className="surface-card" style={{ padding: '12px 14px' }}>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Clock In</div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, marginTop: '4px' }}>{sessionStart || '--:--'}</div>
+                </div>
+                <div className="surface-card" style={{ padding: '12px 14px' }}>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Clock Out</div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, marginTop: '4px' }}>{sessionEnd || '--:--'}</div>
+                </div>
+                <div className="surface-card" style={{ padding: '12px 14px' }}>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Location</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '1.0rem', fontWeight: 800, marginTop: '4px' }}><MapPin size={13} /> {sessionLocation}</div>
+                </div>
+                <div className="surface-card" style={{ padding: '12px 14px' }}>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>This week</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '1.0rem', fontWeight: 800, marginTop: '4px' }}><TrendingUp size={13} /> {formatShortHours(weeklyTotalMinutes)}</div>
+                </div>
+              </div>
+
+              <div className="surface-card" style={{ padding: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700 }}>
+                  <BarChart3 size={13} /> Last 7 days
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: '68px' }}>
+                  {weeklyChartData.map((day) => (
+                    <div key={day.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', height: '100%', justifyContent: 'flex-end' }}>
+                      <div style={{
+                        width: '100%',
+                        maxWidth: '22px',
+                        height: `${Math.max(4, Math.round((day.minutes / maxWeeklyMinutes) * 100))}%`,
+                        borderRadius: '5px',
+                        background: day.isToday ? 'linear-gradient(180deg, #34d399, #059669)' : 'rgba(148, 163, 184, 0.28)',
+                        transition: 'height 0.3s ease'
+                      }} title={`${day.label}: ${formatShortHours(day.minutes)}`} />
+                      <span style={{ fontSize: '0.62rem', color: day.isToday ? '#34d399' : 'var(--text-muted)', fontWeight: day.isToday ? 800 : 500 }}>{day.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
+
           <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', padding: '8px 10px', borderRadius: '10px', background: 'rgba(15, 23, 42, 0.4)', border: '1px solid rgba(255,255,255,0.06)' }}>{attendanceMessage}</div>
         </section>
       ) : null}
 
       {canViewTeamAttendance ? (
-        <section className="glass-card" style={{ padding: '16px', display: 'grid', gap: '12px' }}>
+        <section className="glass-card" style={{ padding: '16px', display: 'grid', gap: '14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Team filters</div>
@@ -462,13 +616,94 @@ export const AttendanceDashboard: React.FC = () => {
                   {employeeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
               </label>
-              <label style={{ display: 'grid', gap: '6px', minWidth: '180px' }}>
-                <span style={{ fontSize: '0.74rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Status</span>
-                <select value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
-                  {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
-                </select>
-              </label>
             </div>
+          </div>
+
+          {/* Quick status filter chips */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {statusOptions.map((status) => {
+              const active = selectedStatus === status;
+              const chip = status !== 'All' ? statusStyles[status] : null;
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => setSelectedStatus(status)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '999px',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    border: active ? `1px solid ${chip?.accent || '#60a5fa'}` : '1px solid var(--glass-border)',
+                    background: active ? (chip?.bg || 'rgba(96, 165, 250, 0.16)') : 'transparent',
+                    color: active ? (chip?.color || '#60a5fa') : 'var(--text-secondary)',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {status}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Team roster */}
+          <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))' }}>
+            {employeeSummary.map((card: any) => (
+              <div key={card.userId || card.employeeName} className="surface-card" style={{ padding: '14px', display: 'grid', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    background: getAvatarColor(card.userId || card.employeeName),
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 800,
+                    fontSize: '0.8rem',
+                    color: '#fff',
+                    flexShrink: 0,
+                    position: 'relative'
+                  }}>
+                    {getInitials(card.employeeName)}
+                    {card.activeNow ? (
+                      <span style={{ position: 'absolute', bottom: '-1px', right: '-1px', width: '11px', height: '11px', borderRadius: '50%', background: '#34d399', border: '2px solid var(--bg-secondary)' }} />
+                    ) : null}
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.employeeName}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{card.department}</div>
+                  </div>
+                  <span style={{
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    padding: '3px 8px',
+                    borderRadius: '999px',
+                    background: card.activeNow ? 'rgba(34, 197, 94, 0.14)' : 'rgba(148, 163, 184, 0.14)',
+                    color: card.activeNow ? '#34d399' : 'var(--text-muted)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {card.activeNow ? <Zap size={10} /> : null}{card.activeNow ? 'Active now' : 'Off duty'}
+                  </span>
+                </div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    <span>{card.present} sessions logged</span>
+                    <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{formatShortHours(card.hours)}</span>
+                  </div>
+                  <div style={{ height: '6px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.14)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${Math.min(100, Math.round((card.hours / maxSummaryHours) * 100))}%`, background: 'linear-gradient(90deg, #6366f1, #0ea5e9)', borderRadius: '999px' }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+            {employeeSummary.length === 0 ? (
+              <div className="surface-card" style={{ padding: '18px', color: 'var(--text-secondary)', gridColumn: '1 / -1', textAlign: 'center' }}>No team members match the current filters yet.</div>
+            ) : null}
           </div>
         </section>
       ) : null}
@@ -496,31 +731,17 @@ export const AttendanceDashboard: React.FC = () => {
           </div>
           <div className="glass-card" style={{ padding: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}><Users size={16} /><span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Present</span></div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{presentCount}</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#34d399' }}>{presentCount}</h3>
           </div>
           <div className="glass-card" style={{ padding: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}><Users size={16} /><span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Absent</span></div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{absentCount}</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f87171' }}>{absentCount}</h3>
           </div>
           <div className="glass-card" style={{ padding: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}><Monitor size={16} /><span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Office / Remote</span></div>
             <h3 style={{ fontSize: '0.95rem', fontWeight: 800 }}>{officeCount} office • {remoteCount} remote</h3>
           </div>
         </div>
-        {canViewTeamAttendance ? (
-          <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-            {employeeSummary.map((card) => (
-              <div key={card.userId || card.employeeName} className="glass-card" style={{ padding: '14px', display: 'grid', gap: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontWeight: 800 }}>{card.employeeName}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{card.department}</div>
-                </div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{card.present} sessions logged</div>
-                <div style={{ fontSize: '1.05rem', fontWeight: 800 }}>{Math.floor(card.hours / 60)}h {card.hours % 60}m</div>
-              </div>
-            ))}
-          </div>
-        ) : null}
       </section>
 
       <section className="glass-card" style={{ padding: '16px' }}>
@@ -553,8 +774,34 @@ export const AttendanceDashboard: React.FC = () => {
               ) : visibleEntries.map((entry) => {
                 const chip = statusStyles[entry.status || 'Present'] || statusStyles.Present;
                 return (
-                  <tr key={entry.attendanceId}>
-                    {!isEmployee ? <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>{entry.employeeName || currentUser?.name}</td> : null}
+                  <tr
+                    key={entry.attendanceId}
+                    style={{ borderLeft: `3px solid ${chip.accent}`, transition: 'background 0.15s ease' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(148, 163, 184, 0.06)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; }}
+                  >
+                    {!isEmployee ? (
+                      <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '50%',
+                            background: getAvatarColor(entry.userId || entry.employeeName),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.65rem',
+                            fontWeight: 800,
+                            color: '#fff',
+                            flexShrink: 0
+                          }}>
+                            {getInitials(entry.employeeName || currentUser?.name)}
+                          </div>
+                          {entry.employeeName || currentUser?.name}
+                        </div>
+                      </td>
+                    ) : null}
                     <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>{entry.date || entry.createdAt?.slice(0, 10) || '--'}</td>
                     <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)', color: entry.loginTime ? '#34d399' : 'var(--text-muted)' }}>{entry.loginTime || '--'}</td>
                     <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)', color: entry.logoutTime ? '#f59e0b' : 'var(--text-muted)' }}>{entry.logoutTime || '--'}</td>
@@ -564,7 +811,11 @@ export const AttendanceDashboard: React.FC = () => {
                         {entry.status || 'Present'}
                       </span>
                     </td>
-                    <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>{entry.officeRemote || 'Remote'}</td>
+                    <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        {entry.officeRemote === 'Office' ? <Monitor size={12} /> : <MapPin size={12} />} {entry.officeRemote || 'Remote'}
+                      </span>
+                    </td>
                     <td style={{ padding: '10px 8px', borderBottom: '1px solid var(--glass-border)' }}>
                       <button type="button" onClick={() => exportAttendanceForUser(entry)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 8px', border: '1px solid var(--glass-border)', borderRadius: '8px', background: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'pointer' }}>
                         <Download size={13} /> CSV
@@ -577,6 +828,13 @@ export const AttendanceDashboard: React.FC = () => {
           </table>
         </div>
       </section>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.8); }
+        }
+      `}</style>
     </div>
   );
 };

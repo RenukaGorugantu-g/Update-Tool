@@ -516,12 +516,20 @@ app.post('/api/attendance', async (req, res) => {
 app.get('/api/attendance/export', async (req, res) => {
   try {
     const items = await attendanceStore.getAll();
-    const { userId, email, date } = req.query;
+    const { userId, email, employeeName, date } = req.query;
+    const normalizedUserId = userId ? String(userId).trim().toLowerCase() : '';
+    const normalizedEmail = email ? String(email).trim().toLowerCase() : '';
+    const normalizedEmployeeName = employeeName ? String(employeeName).trim().toLowerCase() : '';
+    const normalizedDate = date ? String(date).trim().toLowerCase() : '';
     const filtered = items.filter((entry) => {
-      const matchesUserId = !userId || String(entry.userId || '').toLowerCase() === String(userId).toLowerCase();
-      const matchesEmail = !email || String(entry.email || '').toLowerCase() === String(email).toLowerCase();
-      const matchesDate = !date || String(entry.date || '').toLowerCase() === String(date).toLowerCase();
-      return matchesUserId && matchesEmail && (date ? matchesDate : true);
+      const entryUserId = String(entry.userId || '').trim().toLowerCase();
+      const entryEmail = String(entry.email || '').trim().toLowerCase();
+      const entryEmployeeName = String(entry.employeeName || '').trim().toLowerCase();
+      const matchesUserId = !normalizedUserId || entryUserId === normalizedUserId;
+      const matchesEmail = !normalizedEmail || entryEmail === normalizedEmail || entryUserId === normalizedEmail || entryEmployeeName === normalizedEmail;
+      const matchesEmployeeName = !normalizedEmployeeName || entryEmployeeName.includes(normalizedEmployeeName) || entryEmail.includes(normalizedEmployeeName) || entryUserId.includes(normalizedEmployeeName);
+      const matchesDate = !normalizedDate || String(entry.date || '').trim().toLowerCase() === normalizedDate;
+      return (matchesUserId || matchesEmail || matchesEmployeeName) && matchesDate;
     });
     const header = 'Employee Name,Email,Department,Date,Login,Logout,Working Hours,Idle Time,Productive Hours,Attendance Status,Office/Remote,IP Address,Browser,Operating System,Device\n';
     const rows = filtered.map((entry) => {
