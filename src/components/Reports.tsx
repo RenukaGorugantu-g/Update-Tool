@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { usePulse } from '../context/PulseContext';
-import { exportAnalyticsToCsv } from '../utils/reporting';
+import { exportAnalyticsToCsv, getRangeStart } from '../utils/reporting';
 import { Search, Download } from 'lucide-react';
 
 const normalizeListValue = (value: unknown) => {
@@ -25,6 +25,7 @@ const Reports: React.FC = () => {
   const { currentUser, users, updates } = usePulse();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [range, setRange] = useState<'weekly' | 'monthly' | 'sprint'>('sprint');
 
   const allUpdates = updates || [];
 
@@ -34,11 +35,31 @@ const Reports: React.FC = () => {
   }, [allUpdates, currentUser]);
 
   const filteredUpdates = useMemo(() => {
+    const start = getRangeStart(range);
     const list = currentUser?.role === 'employee' ? personalUpdates : allUpdates;
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return list;
-    return list.filter((u) => (u.employeeName || '').toLowerCase().includes(term) || (u.projectName || '').toLowerCase().includes(term) || (u.date || '').includes(term));
-  }, [allUpdates, personalUpdates, searchTerm, currentUser]);
+    const periodMatches = list.filter((u) => {
+      const timestamp = Date.parse(u.timestamp || u.date || '');
+      return !Number.isNaN(timestamp) && timestamp >= start.getTime();
+    });
+    if (!term) return periodMatches;
+    return periodMatches.filter((u) => (u.employeeName || '').toLowerCase().includes(term) || (u.projectName || '').toLowerCase().includes(term) || (u.date || '').includes(term));
+  }, [allUpdates, personalUpdates, searchTerm, currentUser, range]);
+
+  const groupedUpdates = useMemo(() => {
+    const groups = new Map<string, any[]>();
+    filteredUpdates.forEach((update) => {
+      const key = update.employeeId || update.employeeName || 'unknown';
+      const next = groups.get(key) || [];
+      next.push(update);
+      groups.set(key, next);
+    });
+    return Array.from(groups.entries()).map(([employeeId, entries]) => ({
+      employeeId,
+      name: entries[0]?.employeeName || 'Unknown',
+      entries: entries.sort((a, b) => Date.parse(b.timestamp || b.date || '') - Date.parse(a.timestamp || a.date || ''))
+    }));
+  }, [filteredUpdates]);
 
   const exportVisible = (rows: any[]) => {
     exportAnalyticsToCsv(currentUser ? `${currentUser.id}-reports.csv` : 'reports.csv', rows);
@@ -75,6 +96,11 @@ const Reports: React.FC = () => {
             <Search size={14} />
             <input placeholder="Search by name, project or date" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ border: 'none', background: 'transparent', outline: 'none' }} />
           </div>
+          <select value={range} onChange={(e) => setRange(e.target.value as 'weekly' | 'monthly' | 'sprint')} style={{ borderRadius: 8, padding: '6px 10px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
+            <option value="weekly">Last 7 days</option>
+            <option value="sprint">Last 14 days</option>
+            <option value="monthly">This month</option>
+          </select>
           <button className="btn btn-secondary" onClick={() => exportVisible(rowsForExport)} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Download size={14} /> Export CSV
           </button>
@@ -103,30 +129,33 @@ const Reports: React.FC = () => {
 
         <main>
           <div style={{ display: 'grid', gap: 12 }}>
-            {filteredUpdates.length === 0 ? (
+            {groupedUpdates.length === 0 ? (
               <div className="glass-card" style={{ padding: 18, color: 'var(--text-secondary)' }}>No submissions match the current filter.</div>
-            ) : filteredUpdates.map((u) => (
-              <div key={u.id} className="glass-card" style={{ padding: 14, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                <div style={{ width: 56, textAlign: 'center' }}>
-                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: users.find(x => x.id === u.employeeId)?.avatarColor || 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800 }}>{(u.employeeName || '').split(' ').map((n: string) => n[0] || '').join('')}</div>
-                  <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--text-muted)' }}>{u.date}</div>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            ) : groupedUpdates.map((group) => (
+              <div key={group.employeeId} className="glass-card" style={{ padding: 14, display: 'grid', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: users.find(x => x.id === group.employeeId)?.avatarColor || 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800 }}>{(group.name || '').split(' ').map((n: string) => n[0] || '').join('')}</div>
                     <div>
-                      <div style={{ fontWeight: 800 }}>{u.employeeName}</div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{u.projectName} • {u.priority}</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn btn-secondary" onClick={() => setSelectedUser(u.employeeId)}>View user</button>
+                      <div style={{ fontWeight: 800 }}>{group.name}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{group.entries.length} submission{group.entries.length !== 1 ? 's' : ''} in the selected period</div>
                     </div>
                   </div>
+                  <button className="btn btn-secondary" onClick={() => setSelectedUser(group.employeeId)}>View full history</button>
+                </div>
 
-                  <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
-                    <div><strong>Completed:</strong> {formatListValue(u.completed)}</div>
-                    <div><strong>Working:</strong> {formatListValue(u.working)}</div>
-                    <div><strong>Blockers:</strong> {formatListValue(u.blockers)}</div>
-                  </div>
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {group.entries.slice(0, 3).map((u) => (
+                    <div key={u.id} style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--bg-secondary)', border: '1px solid var(--glass-border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <div style={{ fontWeight: 700 }}>{u.date || u.timestamp?.slice(0, 10)}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{u.projectName || 'General'} • {u.priority || 'medium'}</div>
+                      </div>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}><strong>Completed:</strong> {formatListValue(u.completed)}</div>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}><strong>Working:</strong> {formatListValue(u.working)}</div>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}><strong>Blockers:</strong> {formatListValue(u.blockers)}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}

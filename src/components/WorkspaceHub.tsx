@@ -15,6 +15,7 @@ export const WorkspaceHub: React.FC = () => {
     { id: 'space_design', name: '#design-team', description: 'UX/UI, layouts, branding, and assets feedback' },
     { id: 'space_marketing', name: '#marketing-team', description: 'SEO updates, ad campaigns, and copywriting' },
     { id: 'space_sales', name: '#sales-team', description: 'Outbound sales, client leads, and deal conversions' },
+    { id: 'space_hr', name: '#hr-team', description: 'People operations, onboarding, and HR coordination' },
     { id: 'space_client_success', name: '#client-success', description: 'Client feedback, requirements, and revisions' }
   ];
   const [activeSpaceId, setActiveSpaceId] = useState(chatSpaces[0].id);

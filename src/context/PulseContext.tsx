@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { mergeUpdatesRecords } from '../utils/updateRecords.ts';
 
 // --- TS Interfaces ---
 export interface User {
@@ -283,44 +284,6 @@ const normalizeListValue = (value: unknown) => {
       .filter(Boolean);
   }
   return [];
-};
-
-const mergeUpdatesRecords = (existing: UpdateRecord[], incoming: UpdateRecord[]) => {
-  const byKey = new Map<string, UpdateRecord>();
-  const merged = [...(existing || []), ...(incoming || [])]
-    .filter((entry): entry is UpdateRecord => Boolean(entry && (entry.id || entry.employeeId)));
-
-  merged.forEach((entry) => {
-    const key = String(entry.id || `${entry.employeeId || 'unknown'}::${entry.date || ''}::${entry.timestamp || ''}`).trim();
-    const previous = byKey.get(key);
-    const mergedEntry = previous
-      ? {
-          ...previous,
-          ...entry,
-          id: previous.id || entry.id || key,
-          employeeId: entry.employeeId || previous.employeeId || '',
-          employeeName: entry.employeeName || previous.employeeName || '',
-          department: entry.department || previous.department || 'General',
-          pod: entry.pod || previous.pod || 'India Pod',
-          projectName: entry.projectName || previous.projectName || '',
-          date: entry.date || previous.date || '',
-          timestamp: entry.timestamp || previous.timestamp || '',
-          comments: Array.isArray(entry.comments) ? entry.comments : Array.isArray(previous.comments) ? previous.comments : [],
-          completed: normalizeListValue(entry.completed).length > 0 ? normalizeListValue(entry.completed) : normalizeListValue(previous.completed),
-          working: normalizeListValue(entry.working).length > 0 ? normalizeListValue(entry.working) : normalizeListValue(previous.working),
-          blockers: normalizeListValue(entry.blockers).length > 0 ? normalizeListValue(entry.blockers) : normalizeListValue(previous.blockers),
-          files: Array.isArray(entry.files) ? entry.files : Array.isArray(previous.files) ? previous.files : []
-        }
-      : {
-          ...entry,
-          id: entry.id || key,
-          comments: Array.isArray(entry.comments) ? entry.comments : []
-        };
-
-    byKey.set(key, mergedEntry);
-  });
-
-  return Array.from(byKey.values()).sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
 };
 
 const mergeAttendanceRecords = (existing: AttendanceRecord[], incoming: AttendanceRecord[]) => {
@@ -831,6 +794,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (dept.includes('design')) return 'space_design';
     if (dept.includes('marketing')) return 'space_marketing';
     if (dept.includes('sales')) return 'space_sales';
+    if (dept.includes('hr') || dept.includes('human resource') || dept.includes('human resources')) return 'space_hr';
     if (dept.includes('success') || dept.includes('client')) return 'space_client_success';
     return 'space_general';
   };

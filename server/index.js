@@ -137,6 +137,7 @@ const EXPECTED_CHAT_SPACES = [
   'space_design',
   'space_marketing',
   'space_sales',
+  'space_hr',
   'space_client_success',
   'space_general'
 ];
@@ -225,10 +226,12 @@ const getGoogleUserProfile = async (accessToken) => {
 };
 
 const resolveSenderEmail = async (preferredSenderEmail) => {
+  const companySender = 'info@maplelearningsolutions.com';
   const candidates = [
     String(preferredSenderEmail || '').trim().toLowerCase(),
     String(process.env.GMAIL_SENDER_EMAIL || '').trim().toLowerCase(),
-    String(process.env.DEFAULT_GMAIL_SENDER || '').trim().toLowerCase()
+    String(process.env.DEFAULT_GMAIL_SENDER || '').trim().toLowerCase(),
+    companySender
   ].filter(Boolean);
 
   for (const candidate of candidates) {

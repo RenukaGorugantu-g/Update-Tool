@@ -3,6 +3,31 @@ import assert from 'node:assert/strict';
 
 import { createNotificationService } from '../notificationService.js';
 
+test('HR department updates route to the HR chat space', async () => {
+  const service = createNotificationService({
+    sendGmailMessage: async () => ({ ok: true }),
+    sendChatMessage: async () => ({ status: 200 })
+  });
+
+  const result = await service.notifyUpdateSubmission({
+    update: {
+      projectName: 'People Ops',
+      priority: 'medium',
+      completed: ['Reviewed onboarding'],
+      working: ['Prepared HR review'],
+      blockers: ['None'],
+      employeeName: 'Kavya'
+    },
+    user: {
+      name: 'Kavya',
+      email: 'kavya@example.com',
+      department: 'HR'
+    }
+  });
+
+  assert.equal(result.chatSpaceId, 'space_hr');
+});
+
 test('employee updates send a formatted Google Chat stand-up message', async () => {
   const calls = [];
 
