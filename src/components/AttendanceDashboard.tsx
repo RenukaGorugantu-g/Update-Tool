@@ -140,21 +140,15 @@ export const AttendanceDashboard: React.FC = () => {
         setSessionPaused(false);
       }
     };
-    const onVisibilityChange = () => {
-      if (document.hidden) {
-        setSessionPaused(true);
-        return;
-      }
+    const onFocus = () => {
       lastActivityRef.current = Date.now();
-      setSessionPaused(false);
+      if (sessionPaused) {
+        setSessionPaused(false);
+      }
       syncElapsed();
     };
 
     const idleCheck = window.setInterval(() => {
-      if (document.hidden) {
-        setSessionPaused(true);
-        return;
-      }
       const now = Date.now();
       const isIdle = now - lastActivityRef.current > IDLE_TIMEOUT_MS;
       if (isIdle && !sessionPaused) {
@@ -166,7 +160,7 @@ export const AttendanceDashboard: React.FC = () => {
     window.addEventListener('mousedown', markActive);
     window.addEventListener('keydown', markActive);
     window.addEventListener('touchstart', markActive);
-    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', onFocus);
 
     return () => {
       window.clearInterval(timer);
@@ -175,7 +169,7 @@ export const AttendanceDashboard: React.FC = () => {
       window.removeEventListener('mousedown', markActive);
       window.removeEventListener('keydown', markActive);
       window.removeEventListener('touchstart', markActive);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', onFocus);
     };
   }, [sessionActive, sessionPaused, sessionStartedAt]);
 
@@ -596,7 +590,7 @@ export const AttendanceDashboard: React.FC = () => {
               <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Clocking</div>
               <h3 style={{ margin: '6px 0 0', fontSize: '1rem', fontWeight: 800 }}>Today&apos;s attendance tracker</h3>
               <div style={{ marginTop: '6px', fontSize: '0.8rem', color: sessionPaused ? '#f59e0b' : 'var(--text-secondary)' }}>
-                {sessionActive ? (sessionPaused ? 'Paused while the screen is hidden or idle.' : 'Tracking active time while the screen is on.') : 'Ready to track active work time.'}
+                {sessionActive ? (sessionPaused ? 'Paused after a period of inactivity.' : 'Tracking active work time while the device is in use.') : 'Ready to track active work time.'}
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
