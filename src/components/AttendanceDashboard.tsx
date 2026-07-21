@@ -73,7 +73,9 @@ export const AttendanceDashboard: React.FC = () => {
   const currentSessionKey = currentUser?.id ? `pulse-attendance-session-${currentUser.id}` : 'pulse-attendance-session';
   const today = new Date().toISOString().split('T')[0];
   const lastActivityRef = useRef(Date.now());
+  const hiddenSinceRef = useRef<number | null>(null);
   const IDLE_TIMEOUT_MS = 180000;
+  const HIDDEN_PAUSE_TIMEOUT_MS = 20000;
 
   useEffect(() => {
     const timer = window.setInterval(() => setClockNow(new Date()), 30000);
@@ -142,6 +144,21 @@ export const AttendanceDashboard: React.FC = () => {
     };
     const onFocus = () => {
       lastActivityRef.current = Date.now();
+      hiddenSinceRef.current = null;
+      if (sessionPaused) {
+        setSessionPaused(false);
+      }
+      syncElapsed();
+    };
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        if (hiddenSinceRef.current === null) {
+          hiddenSinceRef.current = Date.now();
+        }
+        return;
+      }
+      hiddenSinceRef.current = null;
+      lastActivityRef.current = Date.now();
       if (sessionPaused) {
         setSessionPaused(false);
       }
@@ -151,7 +168,8 @@ export const AttendanceDashboard: React.FC = () => {
     const idleCheck = window.setInterval(() => {
       const now = Date.now();
       const isIdle = now - lastActivityRef.current > IDLE_TIMEOUT_MS;
-      if (isIdle && !sessionPaused) {
+      const shouldPauseForHidden = document.hidden && hiddenSinceRef.current !== null && now - hiddenSinceRef.current > HIDDEN_PAUSE_TIMEOUT_MS;
+      if ((isIdle || shouldPauseForHidden) && !sessionPaused) {
         setSessionPaused(true);
       }
     }, 10000);
@@ -161,6 +179,7 @@ export const AttendanceDashboard: React.FC = () => {
     window.addEventListener('keydown', markActive);
     window.addEventListener('touchstart', markActive);
     window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
       window.clearInterval(timer);
@@ -170,6 +189,7 @@ export const AttendanceDashboard: React.FC = () => {
       window.removeEventListener('keydown', markActive);
       window.removeEventListener('touchstart', markActive);
       window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [sessionActive, sessionPaused, sessionStartedAt]);
 
@@ -484,6 +504,20 @@ export const AttendanceDashboard: React.FC = () => {
     exportRows(rows, filename);
   };
 
+  const toggleSessionPause = () => {
+    if (!sessionActive) return;
+    const nextPausedState = !sessionPaused;
+    if (nextPausedState) {
+      setSessionPaused(true);
+      setAttendanceMessage('Paused. Resume when you are ready.');
+    } else {
+      lastActivityRef.current = Date.now();
+      hiddenSinceRef.current = null;
+      setSessionPaused(false);
+      setAttendanceMessage('Resumed. Tracking active work time again.');
+    }
+  };
+
   const handleAttendanceAction = async (action: 'login' | 'logout') => {
     if (!currentUser) return;
     const now = new Date();
@@ -512,6 +546,7 @@ export const AttendanceDashboard: React.FC = () => {
     if (action === 'login') {
       setSessionActive(true);
       setSessionPaused(false);
+      hiddenSinceRef.current = null;
       setSessionElapsed(0);
       setSessionAccumulatedSeconds(0);
       setSessionStart(time);
@@ -525,6 +560,7 @@ export const AttendanceDashboard: React.FC = () => {
       const workedLabel = formatDurationLabel(completedSeconds);
       setSessionActive(false);
       setSessionPaused(false);
+      hiddenSinceRef.current = null;
       setSessionAccumulatedSeconds(completedSeconds);
       setSessionElapsed(0);
       setSessionEnd(time);
@@ -596,6 +632,9 @@ export const AttendanceDashboard: React.FC = () => {
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button type="button" onClick={() => void handleAttendanceAction('login')} disabled={sessionActive} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.16)', color: '#191b1a', border: '1px solid rgba(16, 185, 129, 0.28)', opacity: sessionActive ? 0.5 : 1, cursor: sessionActive ? 'not-allowed' : 'pointer' }}>
                 <LogIn size={14} /> Clock In
+              </button>
+              <button type="button" onClick={toggleSessionPause} disabled={!sessionActive} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: sessionPaused ? 'rgba(16, 185, 129, 0.16)' : 'rgba(245, 158, 11, 0.16)', color: '#0e0d0d', border: '1px solid rgba(148, 163, 184, 0.24)', opacity: !sessionActive ? 0.5 : 1, cursor: !sessionActive ? 'not-allowed' : 'pointer' }}>
+                {sessionPaused ? <Sparkles size={14} /> : <Clock3 size={14} />} {sessionPaused ? 'Resume' : 'Pause'}
               </button>
               <button type="button" onClick={() => void handleAttendanceAction('logout')} disabled={!sessionActive} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(248, 113, 113, 0.14)', color: '#0e0d0d', border: '1px solid rgba(248, 113, 113, 0.24)', opacity: !sessionActive ? 0.5 : 1, cursor: !sessionActive ? 'not-allowed' : 'pointer' }}>
                 <LogOut size={14} /> Clock Out
