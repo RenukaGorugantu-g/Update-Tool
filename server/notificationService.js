@@ -4,7 +4,7 @@ const getChatSpaceId = (department = '') => {
   if (dept.includes('design')) return 'space_design';
   if (dept.includes('marketing')) return 'space_marketing';
   if (dept.includes('sales')) return 'space_sales';
-  if (dept.includes('hr') || dept.includes('human resource') || dept.includes('human resources')) return 'space_hr';
+  if (dept.includes('hr') || dept.includes('human resource') || dept.includes('human resources') || dept.includes('people ops') || dept.includes('people operations') || dept.includes('talent')) return 'space_hr';
   if (dept.includes('success') || dept.includes('client')) return 'space_client_success';
   return 'space_general';
 };

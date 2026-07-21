@@ -26,6 +26,7 @@ const Reports: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [range, setRange] = useState<'weekly' | 'monthly' | 'sprint'>('sprint');
+  const [expandedEmployees, setExpandedEmployees] = useState<Record<string, boolean>>({});
 
   const allUpdates = updates || [];
 
@@ -79,6 +80,10 @@ const Reports: React.FC = () => {
 
   const openUser = (employeeId: string) => {
     setSelectedUser(employeeId === selectedUser ? null : employeeId);
+  };
+
+  const toggleEmployee = (employeeId: string) => {
+    setExpandedEmployees((prev) => ({ ...prev, [employeeId]: !prev[employeeId] }));
   };
 
   if (!currentUser) return null;
@@ -145,7 +150,7 @@ const Reports: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'grid', gap: 8 }}>
-                  {group.entries.slice(0, 3).map((u) => (
+                  {group.entries.slice(0, expandedEmployees[group.employeeId] ? group.entries.length : 3).map((u) => (
                     <div key={u.id} style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--bg-secondary)', border: '1px solid var(--glass-border)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                         <div style={{ fontWeight: 700 }}>{u.date || u.timestamp?.slice(0, 10)}</div>
@@ -157,6 +162,12 @@ const Reports: React.FC = () => {
                     </div>
                   ))}
                 </div>
+
+                {group.entries.length > 3 && (
+                  <button className="btn btn-secondary" onClick={() => toggleEmployee(group.employeeId)} style={{ justifySelf: 'start' }}>
+                    {expandedEmployees[group.employeeId] ? 'Show fewer dates' : `Show all ${group.entries.length} dates`}
+                  </button>
+                )}
               </div>
             ))}
           </div>

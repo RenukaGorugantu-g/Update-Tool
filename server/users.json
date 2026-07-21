@@ -1,7 +1,7 @@
 [
   {
     "id": "u-admin",
-    "name": "Admin Root",
+    "name": "Maple Edge",
     "email": "info@maplelearningsolutions.com",
     "role": "admin",
     "department": "Management",
@@ -63,5 +63,18 @@
     "id": "emp-1783495121131",
     "active": true,
     "avatarColor": "#ea580c"
+  },
+  {
+    "id": "user_swetha_maplelearningsolutions_com",
+    "name": "Swetha",
+    "email": "swetha@maplelearningsolutions.com",
+    "role": "employee",
+    "department": "HR",
+    "pod": "India Pod",
+    "reportingManager": "Sandeep M",
+    "employeeId": "CL-SWETHA",
+    "active": true,
+    "avatarColor": "#10b981",
+    "password": "password"
   }
 ]

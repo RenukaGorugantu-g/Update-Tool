@@ -181,6 +181,27 @@ export const OrgChart: React.FC = () => {
                   </div>
                 </div>
 
+                {/* HR Team */}
+                <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', padding: '14px', border: '1px solid var(--glass-border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent-indigo)', textTransform: 'uppercase' }}>
+                      HR Team
+                    </span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Lead: People Ops</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {getEmployeesInDept('India Pod', 'HR').map(emp => (
+                      <div key={emp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--glass-border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
+                          <User size={12} style={{ color: 'var(--text-muted)' }} />
+                          <span style={{ fontWeight: 700 }}>{emp.name}</span>
+                        </div>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{emp.employeeId}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
               </div>
             </div>
           )}
