@@ -22,11 +22,12 @@ const formatListValue = (value: unknown) => {
 };
 
 const Reports: React.FC = () => {
-  const { currentUser, users, updates } = usePulse();
+  const { currentUser, users, updates, addCommentToUpdate } = usePulse();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [range, setRange] = useState<'weekly' | 'monthly' | 'sprint'>('sprint');
   const [expandedEmployees, setExpandedEmployees] = useState<Record<string, boolean>>({});
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
 
   const allUpdates = updates || [];
 
@@ -84,6 +85,14 @@ const Reports: React.FC = () => {
 
   const toggleEmployee = (employeeId: string) => {
     setExpandedEmployees((prev) => ({ ...prev, [employeeId]: !prev[employeeId] }));
+  };
+
+  const submitComment = (updateId: string) => {
+    const content = (commentDrafts[updateId] || '').trim();
+    if (!content) return;
+
+    addCommentToUpdate(updateId, content, { gmail: true, chat: true, internal: true });
+    setCommentDrafts((prev) => ({ ...prev, [updateId]: '' }));
   };
 
   if (!currentUser) return null;
@@ -159,6 +168,34 @@ const Reports: React.FC = () => {
                       <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}><strong>Completed:</strong> {formatListValue(u.completed)}</div>
                       <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}><strong>Working:</strong> {formatListValue(u.working)}</div>
                       <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}><strong>Blockers:</strong> {formatListValue(u.blockers)}</div>
+                      {Array.isArray(u.comments) && u.comments.length > 0 && (
+                        <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>Comments</div>
+                          {u.comments.map((comment: any) => (
+                            <div key={comment.id} style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--bg-tertiary)', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                              <div style={{ fontWeight: 700, marginBottom: 2 }}>{comment.authorName}</div>
+                              <div>{comment.content}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {currentUser.role !== 'employee' && (
+                        <div style={{ marginTop: 8, display: 'grid', gap: 8 }}>
+                          <textarea
+                            value={commentDrafts[u.id] || ''}
+                            onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [u.id]: e.target.value }))}
+                            placeholder={`Leave a follow-up for ${u.employeeName || 'this employee'}...`}
+                            rows={3}
+                            style={{ width: '100%', borderRadius: 8, border: '1px solid var(--glass-border)', padding: '8px 10px', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                          />
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>This sends the note to the employee email and the relevant Google Chat space.</span>
+                            <button className="btn btn-primary" onClick={() => submitComment(u.id)} style={{ padding: '8px 12px' }}>
+                              Send comment
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -200,6 +237,23 @@ const Reports: React.FC = () => {
                   <div><strong>Working:</strong> {formatListValue(u.working)}</div>
                   <div><strong>Blockers:</strong> {formatListValue(u.blockers)}</div>
                 </div>
+                {currentUser.role !== 'employee' && (
+                  <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+                    <textarea
+                      value={commentDrafts[u.id] || ''}
+                      onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [u.id]: e.target.value }))}
+                      placeholder={`Leave a follow-up for ${u.employeeName || 'this employee'}...`}
+                      rows={3}
+                      style={{ width: '100%', borderRadius: 8, border: '1px solid var(--glass-border)', padding: '8px 10px', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>This sends the note to the employee email and the relevant Google Chat space.</span>
+                      <button className="btn btn-primary" onClick={() => submitComment(u.id)} style={{ padding: '8px 12px' }}>
+                        Send comment
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

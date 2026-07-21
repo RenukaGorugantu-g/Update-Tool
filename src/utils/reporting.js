@@ -4,6 +4,38 @@ const safeArray = (value) => Array.isArray(value)
   ? value.filter((entry) => typeof entry === 'string' && entry.trim())
   : [];
 
+const getEmployeeMatchKey = (user = {}) => {
+  const parts = [
+    String(user?.email || '').trim().toLowerCase(),
+    String(user?.employeeId || '').trim().toLowerCase(),
+    String(user?.name || '').trim().toLowerCase()
+  ].filter(Boolean);
+  return parts.join('|');
+};
+
+const getUpdateMatchKeys = (update = {}) => {
+  const user = update?.user || {};
+  const parts = [
+    String(update?.employeeId || '').trim().toLowerCase(),
+    String(update?.employeeName || '').trim().toLowerCase(),
+    String(user?.email || '').trim().toLowerCase(),
+    String(user?.name || '').trim().toLowerCase(),
+    String(update?.department || '').trim().toLowerCase()
+  ].filter(Boolean);
+  return parts;
+};
+
+const matchesEmployee = (update, user) => {
+  const updateKeys = getUpdateMatchKeys(update);
+  const userKey = getEmployeeMatchKey(user);
+  if (!updateKeys.length || !userKey) {
+    return false;
+  }
+
+  const normalizedUserKey = userKey.toLowerCase();
+  return updateKeys.some((key) => normalizedUserKey.includes(key.toLowerCase()) || key.toLowerCase().includes(normalizedUserKey));
+};
+
 export const getRangeStart = (range, now = new Date()) => {
   const base = new Date(now);
 
@@ -64,7 +96,7 @@ export const buildTeamAnalytics = ({ updates, users, range, now = new Date() }) 
 
   const employeeSummaries = activeEmployees.map((user) => {
     const employeeUpdates = rangeUpdates
-      .filter((update) => update.employeeId === user.id)
+      .filter((update) => update.employeeId === user.id || matchesEmployee(update, user))
       .sort((a, b) => Date.parse(b.timestamp || b.date || 0) - Date.parse(a.timestamp || a.date || 0));
 
     const tasksCompleted = employeeUpdates.reduce((sum, update) => sum + safeArray(update.completed).length, 0);

@@ -58,7 +58,7 @@ export const ExecutiveDashboard: React.FC = () => {
   }).length;
 
   // Summary numbers for top badges
-  const submittedToday = updates.filter((u) => u.date === todayStr).length;
+  const submittedToday = analytics.employeeSummaries.filter((summary) => summary.updates.some((update) => update.date === todayStr)).length;
   const totalEmployeesActive = users.filter((u) => u.role === 'employee' && u.active).length || 1;
   const completionPct = Math.round((submittedToday / totalEmployeesActive) * 100);
 

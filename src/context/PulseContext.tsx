@@ -1250,6 +1250,23 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const today = new Date().toISOString().split('T')[0];
     const todayUpdates = updates.filter(u => u.date === today);
     const activeEmployees = users.filter(u => u.role === 'employee' && u.active);
+    const matchesEmployee = (update: any, employee: any) => {
+      const normalizedUser = String(employee?.email || '').trim().toLowerCase();
+      const normalizedName = String(employee?.name || '').trim().toLowerCase();
+      const updateKeys = [
+        String(update?.employeeId || '').trim().toLowerCase(),
+        String(update?.employeeName || '').trim().toLowerCase(),
+        String(update?.user?.email || '').trim().toLowerCase(),
+        String(update?.user?.name || '').trim().toLowerCase(),
+        String(update?.department || '').trim().toLowerCase()
+      ].filter(Boolean);
+
+      if (!updateKeys.length) return false;
+      return updateKeys.some((key) => {
+        const normalizedKey = key.toLowerCase();
+        return normalizedKey === normalizedUser || normalizedKey === normalizedName || normalizedUser.includes(normalizedKey) || normalizedName.includes(normalizedKey);
+      });
+    };
 
     trackEvent('ai_search', {
       query,
@@ -1262,8 +1279,8 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (activeEmployees.length === 0) {
         return "There are no employees registered in the company directory yet. Admin must add employees first.";
       }
-      const submittedIds = todayUpdates.map(u => u.employeeId);
-      const missing = activeEmployees.filter(e => !submittedIds.includes(e.id));
+      const submittedMatches = todayUpdates.filter((update) => activeEmployees.some((employee) => employee.id === update.employeeId || matchesEmployee(update, employee)));
+      const missing = activeEmployees.filter((employee) => !submittedMatches.some((update) => update.employeeId === employee.id || matchesEmployee(update, employee)));
       
       if (missing.length === 0) {
         return "All registered employees have submitted their daily updates for today!";
