@@ -73,9 +73,8 @@ export const AttendanceDashboard: React.FC = () => {
   const currentSessionKey = currentUser?.id ? `pulse-attendance-session-${currentUser.id}` : 'pulse-attendance-session';
   const today = new Date().toISOString().split('T')[0];
   const lastActivityRef = useRef(Date.now());
-  const hiddenSinceRef = useRef<number | null>(null);
-  const IDLE_TIMEOUT_MS = 180000;
-  const HIDDEN_PAUSE_TIMEOUT_MS = 20000;
+  const IDLE_TIMEOUT_MS = 45000;
+  const ACTIVITY_HEARTBEAT_MS = 10000;
 
   useEffect(() => {
     const timer = window.setInterval(() => setClockNow(new Date()), 30000);
@@ -136,28 +135,23 @@ export const AttendanceDashboard: React.FC = () => {
     };
     syncElapsed();
     const timer = window.setInterval(syncElapsed, 1000);
+    const heartbeat = window.setInterval(() => {
+      if (!sessionPaused && sessionActive) {
+        lastActivityRef.current = Date.now();
+      }
+    }, ACTIVITY_HEARTBEAT_MS);
     const markActive = () => {
       lastActivityRef.current = Date.now();
       if (sessionPaused) {
         setSessionPaused(false);
       }
     };
-    const onFocus = () => {
-      lastActivityRef.current = Date.now();
-      hiddenSinceRef.current = null;
-      if (sessionPaused) {
-        setSessionPaused(false);
+    const markActiveFromInput = (event: Event) => {
+      if (event instanceof KeyboardEvent || event instanceof MouseEvent || event instanceof TouchEvent) {
+        markActive();
       }
-      syncElapsed();
     };
-    const onVisibilityChange = () => {
-      if (document.hidden) {
-        if (hiddenSinceRef.current === null) {
-          hiddenSinceRef.current = Date.now();
-        }
-        return;
-      }
-      hiddenSinceRef.current = null;
+    const onFocus = () => {
       lastActivityRef.current = Date.now();
       if (sessionPaused) {
         setSessionPaused(false);
@@ -168,28 +162,28 @@ export const AttendanceDashboard: React.FC = () => {
     const idleCheck = window.setInterval(() => {
       const now = Date.now();
       const isIdle = now - lastActivityRef.current > IDLE_TIMEOUT_MS;
-      const shouldPauseForHidden = document.hidden && hiddenSinceRef.current !== null && now - hiddenSinceRef.current > HIDDEN_PAUSE_TIMEOUT_MS;
-      if ((isIdle || shouldPauseForHidden) && !sessionPaused) {
+      if (isIdle && !sessionPaused) {
         setSessionPaused(true);
       }
-    }, 10000);
+    }, 5000);
 
-    window.addEventListener('mousemove', markActive);
-    window.addEventListener('mousedown', markActive);
-    window.addEventListener('keydown', markActive);
-    window.addEventListener('touchstart', markActive);
+    window.addEventListener('mousemove', markActiveFromInput);
+    window.addEventListener('mousedown', markActiveFromInput);
+    window.addEventListener('keydown', markActiveFromInput);
+    window.addEventListener('touchstart', markActiveFromInput);
     window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onVisibilityChange);
+    document.addEventListener('input', markActiveFromInput, true);
 
     return () => {
       window.clearInterval(timer);
+      window.clearInterval(heartbeat);
       window.clearInterval(idleCheck);
-      window.removeEventListener('mousemove', markActive);
-      window.removeEventListener('mousedown', markActive);
-      window.removeEventListener('keydown', markActive);
-      window.removeEventListener('touchstart', markActive);
+      window.removeEventListener('mousemove', markActiveFromInput);
+      window.removeEventListener('mousedown', markActiveFromInput);
+      window.removeEventListener('keydown', markActiveFromInput);
+      window.removeEventListener('touchstart', markActiveFromInput);
       window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
+      document.removeEventListener('input', markActiveFromInput, true);
     };
   }, [sessionActive, sessionPaused, sessionStartedAt]);
 
@@ -512,7 +506,6 @@ export const AttendanceDashboard: React.FC = () => {
       setAttendanceMessage('Paused. Resume when you are ready.');
     } else {
       lastActivityRef.current = Date.now();
-      hiddenSinceRef.current = null;
       setSessionPaused(false);
       setAttendanceMessage('Resumed. Tracking active work time again.');
     }
@@ -546,7 +539,6 @@ export const AttendanceDashboard: React.FC = () => {
     if (action === 'login') {
       setSessionActive(true);
       setSessionPaused(false);
-      hiddenSinceRef.current = null;
       setSessionElapsed(0);
       setSessionAccumulatedSeconds(0);
       setSessionStart(time);
@@ -560,7 +552,6 @@ export const AttendanceDashboard: React.FC = () => {
       const workedLabel = formatDurationLabel(completedSeconds);
       setSessionActive(false);
       setSessionPaused(false);
-      hiddenSinceRef.current = null;
       setSessionAccumulatedSeconds(completedSeconds);
       setSessionElapsed(0);
       setSessionEnd(time);
