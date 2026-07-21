@@ -1248,7 +1248,10 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const lower = query.toLowerCase();
     
     const today = new Date().toISOString().split('T')[0];
-    const todayUpdates = updates.filter(u => u.date === today);
+    const todayUpdates = updates.filter((u) => {
+      const updateDate = String(u.date || u.timestamp?.slice(0, 10) || '').slice(0, 10);
+      return updateDate === today;
+    });
     const activeEmployees = users.filter(u => u.role === 'employee' && u.active);
     const matchesEmployee = (update: any, employee: any) => {
       const normalizedUser = String(employee?.email || '').trim().toLowerCase();
@@ -1319,7 +1322,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const matchedEmployee = activeEmployees.find(u => lower.includes(u.name.toLowerCase()) || lower.includes(u.name.split(' ')[0].toLowerCase()));
     if (matchedEmployee) {
       const empUpdates = updates
-        .filter((u) => u.employeeId === matchedEmployee.id)
+        .filter((u) => u.employeeId === matchedEmployee.id || matchesEmployee(u, matchedEmployee))
         .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
       const todaysUpdates = empUpdates.filter((u) => u.date === today);
       const relevantUpdates = todaysUpdates.length > 0 ? todaysUpdates : empUpdates.slice(0, 3);

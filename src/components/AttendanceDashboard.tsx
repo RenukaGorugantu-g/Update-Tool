@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { usePulse } from '../context/PulseContext';
 import {
   CalendarDays,
@@ -61,6 +61,7 @@ export const AttendanceDashboard: React.FC = () => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
   const [selectedAttendanceIds, setSelectedAttendanceIds] = useState<string[]>([]);
   const [sessionActive, setSessionActive] = useState(false);
+  const [sessionPaused, setSessionPaused] = useState(false);
   const [sessionElapsed, setSessionElapsed] = useState(0);
   const [sessionAccumulatedSeconds, setSessionAccumulatedSeconds] = useState(0);
   const [sessionStart, setSessionStart] = useState<string | null>(null);
@@ -71,6 +72,8 @@ export const AttendanceDashboard: React.FC = () => {
   const [clockNow, setClockNow] = useState(() => new Date());
   const currentSessionKey = currentUser?.id ? `pulse-attendance-session-${currentUser.id}` : 'pulse-attendance-session';
   const today = new Date().toISOString().split('T')[0];
+  const lastActivityRef = useRef(Date.now());
+  const IDLE_TIMEOUT_MS = 180000;
 
   useEffect(() => {
     const timer = window.setInterval(() => setClockNow(new Date()), 30000);
@@ -90,7 +93,9 @@ export const AttendanceDashboard: React.FC = () => {
       const restoredActive = Boolean(parsed?.active);
       const restoredAccumulatedSeconds = Number(parsed?.accumulatedSeconds || 0);
       const restoredStartedAt = Number(parsed?.sessionStartedAt || 0);
+      const restoredPaused = Boolean(parsed?.paused);
       setSessionActive(restoredActive);
+      setSessionPaused(restoredPaused);
       setSessionAccumulatedSeconds(restoredAccumulatedSeconds);
       setSessionStartedAt(restoredStartedAt || null);
       setSessionStart(parsed?.sessionStart || null);
@@ -106,23 +111,73 @@ export const AttendanceDashboard: React.FC = () => {
   }, [currentSessionKey, currentUser, today]);
 
   useEffect(() => {
-    if (!sessionActive || sessionStartedAt === null) return;
+    if (!sessionActive) {
+      setSessionPaused(false);
+      return;
+    }
+
+    if (sessionPaused && sessionStartedAt !== null) {
+      const pausedSeconds = Math.max(0, Math.floor((Date.now() - sessionStartedAt) / 1000));
+      setSessionAccumulatedSeconds((prev) => prev + pausedSeconds);
+      setSessionElapsed(0);
+      setSessionStartedAt(null);
+      return;
+    }
+
+    if (sessionStartedAt === null) {
+      setSessionStartedAt(Date.now());
+      return;
+    }
+
     const syncElapsed = () => {
       setSessionElapsed(Math.max(0, Math.floor((Date.now() - sessionStartedAt) / 1000)));
     };
     syncElapsed();
     const timer = window.setInterval(syncElapsed, 1000);
-    const onVisibilityChange = () => {
-      if (!document.hidden) {
-        syncElapsed();
+    const markActive = () => {
+      lastActivityRef.current = Date.now();
+      if (sessionPaused) {
+        setSessionPaused(false);
       }
     };
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        setSessionPaused(true);
+        return;
+      }
+      lastActivityRef.current = Date.now();
+      setSessionPaused(false);
+      syncElapsed();
+    };
+
+    const idleCheck = window.setInterval(() => {
+      if (document.hidden) {
+        setSessionPaused(true);
+        return;
+      }
+      const now = Date.now();
+      const isIdle = now - lastActivityRef.current > IDLE_TIMEOUT_MS;
+      if (isIdle && !sessionPaused) {
+        setSessionPaused(true);
+      }
+    }, 10000);
+
+    window.addEventListener('mousemove', markActive);
+    window.addEventListener('mousedown', markActive);
+    window.addEventListener('keydown', markActive);
+    window.addEventListener('touchstart', markActive);
     document.addEventListener('visibilitychange', onVisibilityChange);
+
     return () => {
       window.clearInterval(timer);
+      window.clearInterval(idleCheck);
+      window.removeEventListener('mousemove', markActive);
+      window.removeEventListener('mousedown', markActive);
+      window.removeEventListener('keydown', markActive);
+      window.removeEventListener('touchstart', markActive);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [sessionActive, sessionStartedAt]);
+  }, [sessionActive, sessionPaused, sessionStartedAt]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -132,6 +187,7 @@ export const AttendanceDashboard: React.FC = () => {
     const payload = {
       date: today,
       active: sessionActive,
+      paused: sessionPaused,
       accumulatedSeconds: sessionAccumulatedSeconds,
       sessionStartedAt,
       sessionStart,
@@ -145,7 +201,7 @@ export const AttendanceDashboard: React.FC = () => {
     } else {
       localStorage.removeItem(currentSessionKey);
     }
-  }, [attendanceMessage, currentSessionKey, currentUser, sessionAccumulatedSeconds, sessionActive, sessionEnd, sessionLocation, sessionStart, sessionStartedAt, today]);
+  }, [attendanceMessage, currentSessionKey, currentUser, sessionAccumulatedSeconds, sessionActive, sessionEnd, sessionLocation, sessionPaused, sessionStart, sessionStartedAt, today]);
 
   const parseMinutes = (value?: string) => {
     const normalized = String(value || '0h').trim();
@@ -165,7 +221,7 @@ export const AttendanceDashboard: React.FC = () => {
 
   const formatShortHours = (minutes: number) => `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 
-  const totalSessionSeconds = sessionActive ? sessionAccumulatedSeconds + sessionElapsed : sessionAccumulatedSeconds;
+  const totalSessionSeconds = sessionActive ? sessionAccumulatedSeconds + (sessionPaused ? 0 : sessionElapsed) : sessionAccumulatedSeconds;
   const sessionProgressPercent = Math.min(100, Math.round((totalSessionSeconds / DAILY_TARGET_SECONDS) * 100));
 
   const statusOptions = ['All', 'Present', 'Late', 'Half Day', 'Auto Logout', 'Absent'];
@@ -461,16 +517,20 @@ export const AttendanceDashboard: React.FC = () => {
 
     if (action === 'login') {
       setSessionActive(true);
+      setSessionPaused(false);
       setSessionElapsed(0);
+      setSessionAccumulatedSeconds(0);
       setSessionStart(time);
       setSessionEnd(null);
       setSessionLocation(location);
       setSessionStartedAt(now.getTime());
-      setAttendanceMessage(`Clocked in at ${time}.`);
+      lastActivityRef.current = now.getTime();
+      setAttendanceMessage(`Clocked in at ${time}. Tracking active screen time only.`);
     } else {
-      const completedSeconds = Math.max(1, sessionActive ? sessionAccumulatedSeconds + sessionElapsed : sessionAccumulatedSeconds);
+      const completedSeconds = Math.max(1, sessionActive ? sessionAccumulatedSeconds + (sessionPaused ? 0 : sessionElapsed) : sessionAccumulatedSeconds);
       const workedLabel = formatDurationLabel(completedSeconds);
       setSessionActive(false);
+      setSessionPaused(false);
       setSessionAccumulatedSeconds(completedSeconds);
       setSessionElapsed(0);
       setSessionEnd(time);
@@ -535,6 +595,9 @@ export const AttendanceDashboard: React.FC = () => {
             <div>
               <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Clocking</div>
               <h3 style={{ margin: '6px 0 0', fontSize: '1rem', fontWeight: 800 }}>Today&apos;s attendance tracker</h3>
+              <div style={{ marginTop: '6px', fontSize: '0.8rem', color: sessionPaused ? '#f59e0b' : 'var(--text-secondary)' }}>
+                {sessionActive ? (sessionPaused ? 'Paused while the screen is hidden or idle.' : 'Tracking active time while the screen is on.') : 'Ready to track active work time.'}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button type="button" onClick={() => void handleAttendanceAction('login')} disabled={sessionActive} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.16)', color: '#191b1a', border: '1px solid rgba(16, 185, 129, 0.28)', opacity: sessionActive ? 0.5 : 1, cursor: sessionActive ? 'not-allowed' : 'pointer' }}>
