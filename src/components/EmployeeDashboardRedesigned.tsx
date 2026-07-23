@@ -5,16 +5,41 @@ import { AlertTriangle, CheckCircle2, Download, Mic, Paperclip, Send, Volume2, X
 
 const normalizeListValue = (value: unknown) => {
   if (Array.isArray(value)) {
-    return value.map((entry) => String(entry ?? '').trim()).filter(Boolean);
+    return value.map((entry) => String(entry ?? '').replace(/^\s*[-*•]\s*/, '').trim()).filter(Boolean);
   }
   if (typeof value === 'string') {
     return value
       .split(/\r?\n/)
-      .map((entry) => entry.trim())
+      .map((entry) => entry.replace(/^\s*[-*•]\s*/, '').trim())
       .filter(Boolean);
   }
   return [];
 };
+
+const renderBulletList = (items: string[], color: string) => (
+  <ul style={{ margin: 0, paddingLeft: '16px', display: 'grid', gap: '8px', color: 'var(--text-primary)' }}>
+    {items.map((item, index) => (
+      <li
+        key={`${item}-${index}`}
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '10px',
+          lineHeight: 1.6,
+          color,
+          fontWeight: 600,
+          padding: '8px 12px',
+          borderRadius: '12px',
+          background: 'rgba(255,255,255,0.03)',
+          border: `1px solid ${color}33`
+        }}
+      >
+        <span style={{ marginTop: '4px', width: '10px', height: '10px', borderRadius: '50%', background: color, flexShrink: 0 }} />
+        <span style={{ color }}>{item}</span>
+      </li>
+    ))}
+  </ul>
+);
 
 export const EmployeeDashboard: React.FC = () => {
   const {
@@ -47,14 +72,18 @@ export const EmployeeDashboard: React.FC = () => {
   const personalUpdates = useMemo(() => {
     if (!currentUser) return [] as Array<any>;
     return updates
-      .filter((update) => update.employeeId === currentUser.id)
+      .filter((update) =>
+        update.employeeId === currentUser.id ||
+        String(update.user?.email || '').toLowerCase() === String(currentUser.email || '').toLowerCase() ||
+        String(update.employeeName || '').trim().toLowerCase() === String(currentUser.name || '').trim().toLowerCase()
+      )
       .sort((a, b) => Date.parse(b.timestamp || b.date || '') - Date.parse(a.timestamp || a.date || ''));
   }, [currentUser, updates]);
 
   const personalSummary = useMemo(() => {
-    const completedTasks = personalUpdates.reduce((sum, update) => sum + (Array.isArray(update.completed) ? update.completed.filter((task: string) => task.trim()).length : 0), 0);
-    const workingTasks = personalUpdates.reduce((sum, update) => sum + (Array.isArray(update.working) ? update.working.filter((task: string) => task.trim()).length : 0), 0);
-    const blockers = personalUpdates.reduce((sum, update) => sum + (Array.isArray(update.blockers) ? update.blockers.filter((entry: string) => String(entry).trim() && String(entry).toLowerCase() !== 'none' && String(entry).toLowerCase() !== 'none reported').length : 0), 0);
+    const completedTasks = personalUpdates.reduce((sum, update) => sum + normalizeListValue(update.completed).length, 0);
+    const workingTasks = personalUpdates.reduce((sum, update) => sum + normalizeListValue(update.working).length, 0);
+    const blockers = personalUpdates.reduce((sum, update) => sum + normalizeListValue(update.blockers).filter((entry) => !['none', 'none reported'].includes(entry.toLowerCase())).length, 0);
     return {
       submittedCount: personalUpdates.length,
       completedTasks,
@@ -294,10 +323,25 @@ export const EmployeeDashboard: React.FC = () => {
                 <div style={{ fontWeight: 700 }}>{personalUpdates[0].date}</div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{personalUpdates[0].projectName}</div>
               </div>
-              <div style={{ marginTop: '8px', display: 'grid', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                <div><strong>Completed:</strong> {Array.isArray(personalUpdates[0].completed) && personalUpdates[0].completed.length ? personalUpdates[0].completed.join(' • ') : 'No entries'}</div>
-                <div><strong>Working:</strong> {Array.isArray(personalUpdates[0].working) && personalUpdates[0].working.length ? personalUpdates[0].working.join(' • ') : 'No entries'}</div>
-                <div><strong>Blockers:</strong> {Array.isArray(personalUpdates[0].blockers) && personalUpdates[0].blockers.length ? personalUpdates[0].blockers.join(' • ') : 'No blockers'}</div>
+              <div style={{ marginTop: '8px', display: 'grid', gap: '12px', fontSize: '0.9rem' }}>
+                <div>
+                  <strong style={{ display: 'block', marginBottom: '6px' }}>Completed:</strong>
+                  {Array.isArray(personalUpdates[0].completed) && personalUpdates[0].completed.length
+                    ? renderBulletList(personalUpdates[0].completed, '#34d399')
+                    : <div style={{ color: 'var(--text-secondary)' }}>No entries</div>}
+                </div>
+                <div>
+                  <strong style={{ display: 'block', marginBottom: '6px' }}>Working:</strong>
+                  {Array.isArray(personalUpdates[0].working) && personalUpdates[0].working.length
+                    ? renderBulletList(personalUpdates[0].working, '#60a5fa')
+                    : <div style={{ color: 'var(--text-secondary)' }}>No entries</div>}
+                </div>
+                <div>
+                  <strong style={{ display: 'block', marginBottom: '6px' }}>Blockers:</strong>
+                  {Array.isArray(personalUpdates[0].blockers) && personalUpdates[0].blockers.length
+                    ? renderBulletList(personalUpdates[0].blockers, '#f97316')
+                    : <div style={{ color: 'var(--text-secondary)' }}>No blockers</div>}
+                </div>
               </div>
             </div>
           )}

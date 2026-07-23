@@ -1,0 +1,23 @@
+[
+  {
+    "attendanceId": "att-u-renuka-2026-07-23",
+    "userId": "u-renuka",
+    "employeeName": "Renuka Gorugantu",
+    "email": "renuka@maplelearningsolutions.com",
+    "department": "Development Team",
+    "date": "2026-07-23",
+    "loginTime": "15:26:13",
+    "logoutTime": "",
+    "workingHours": "0h 0m",
+    "idleTime": "0m",
+    "productiveHours": "0h",
+    "status": "Present",
+    "officeRemote": "Remote",
+    "ipAddress": "49.37.155.9",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "createdAt": "2026-07-23T09:56:13.633Z",
+    "updatedAt": "2026-07-23T09:56:13.662Z"
+  }
+]

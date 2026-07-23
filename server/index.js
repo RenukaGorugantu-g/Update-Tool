@@ -153,8 +153,9 @@ const chatWebhookMap = Object.keys(process.env)
     };
   }, {});
 
+const DEFAULT_CHAT_WEBHOOK = 'https://chat.googleapis.com/v1/spaces/AAQA8ijHd80/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=Zw4b-9YglbPEHP89otYpuJR6BjxSarKCvm4wYL0Wdac';
 const configuredChatSpaces = Object.keys(chatWebhookMap).filter((spaceId) => Boolean(chatWebhookMap[spaceId]));
-const configuredGeneralWebhook = chatWebhookMap.space_general || configuredChatSpaces.length > 0 ? chatWebhookMap[configuredChatSpaces[0]] : undefined;
+const configuredGeneralWebhook = chatWebhookMap.space_general || (configuredChatSpaces.length > 0 ? chatWebhookMap[configuredChatSpaces[0]] : DEFAULT_CHAT_WEBHOOK);
 
 console.log('Google Chat configured spaces:', configuredChatSpaces);
 
@@ -229,9 +230,9 @@ const resolveSenderEmail = async (preferredSenderEmail) => {
   const companySender = 'info@maplelearningsolutions.com';
   const candidates = [
     String(preferredSenderEmail || '').trim().toLowerCase(),
+    companySender,
     String(process.env.GMAIL_SENDER_EMAIL || '').trim().toLowerCase(),
-    String(process.env.DEFAULT_GMAIL_SENDER || '').trim().toLowerCase(),
-    companySender
+    String(process.env.DEFAULT_GMAIL_SENDER || '').trim().toLowerCase()
   ].filter(Boolean);
 
   for (const candidate of candidates) {
@@ -305,13 +306,7 @@ const sendGmailMessage = async ({ senderEmail, to, subject, message }) => {
 
 // Send a message payload to a Google Chat webhook.
 const sendChatMessage = async (spaceId, payload) => {
-  // const webhook = chatWebhookMap[spaceId];
-  // if (!webhook) {
-  //   throw new Error(`No webhook configured for chat space ${spaceId}`);
-  // }
-   const webhook =
-    chatWebhookMap[spaceId] ||
-    chatWebhookMap.space_mels;
+  const webhook = chatWebhookMap[spaceId] || configuredGeneralWebhook;
 
   if (!webhook) {
     throw new Error(`No webhook configured for chat space ${spaceId}`);

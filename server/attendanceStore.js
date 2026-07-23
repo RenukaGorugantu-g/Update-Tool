@@ -7,6 +7,12 @@ const defaultPath = path.resolve(
   'attendance.json'
 );
 
+const normalizeAttendanceStatus = (status) => {
+  const value = String(status || '').trim();
+  if (value === 'Auto Logout') return 'Present';
+  return value || 'Present';
+};
+
 const ensureDir = async (filePath) => {
   const dir = path.dirname(filePath);
   await fs.mkdir(dir, { recursive: true });
@@ -17,7 +23,14 @@ const readStore = async (filePath) => {
   try {
     const raw = await fs.readFile(filePath, 'utf8');
     if (!raw.trim()) return [];
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.map((entry) => ({
+        ...entry,
+        status: normalizeAttendanceStatus(entry?.status)
+      }));
+    }
+    return [];
   } catch (err) {
     if (err.code === 'ENOENT') return [];
     console.error('readStore error', err);
@@ -39,6 +52,9 @@ const getAttendanceIdentity = (entry = {}) => {
 
 const mergeAttendanceEntry = (existing = {}, incoming = {}) => {
   const now = new Date().toISOString();
+  const mergedWorkingHours = incoming.workingHours && incoming.workingHours !== '0h 0m'
+    ? incoming.workingHours
+    : existing.workingHours || incoming.workingHours || '0h';
   return {
     ...existing,
     ...incoming,
@@ -50,10 +66,10 @@ const mergeAttendanceEntry = (existing = {}, incoming = {}) => {
     date: incoming.date || existing.date || now.slice(0, 10),
     loginTime: incoming.loginTime || existing.loginTime || '',
     logoutTime: incoming.logoutTime || existing.logoutTime || '',
-    workingHours: incoming.workingHours || existing.workingHours || '0h',
+    workingHours: mergedWorkingHours,
     idleTime: incoming.idleTime || existing.idleTime || '0m',
     productiveHours: incoming.productiveHours || existing.productiveHours || '0h',
-    status: incoming.status || existing.status || 'Present',
+    status: incoming.logoutTime ? 'Present' : normalizeAttendanceStatus(incoming.status || existing.status),
     officeRemote: incoming.officeRemote || existing.officeRemote || 'Remote',
     ipAddress: incoming.ipAddress || existing.ipAddress || '',
     device: incoming.device || existing.device || '',

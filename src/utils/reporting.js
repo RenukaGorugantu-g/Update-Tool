@@ -1,8 +1,14 @@
 const SPRINT_DAYS = 14;
 
-const safeArray = (value) => Array.isArray(value)
-  ? value.filter((entry) => typeof entry === 'string' && entry.trim())
-  : [];
+const safeArray = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry || '').trim()).filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    return value.split(/\r?\n|\s*•\s*/).map((entry) => entry.trim()).filter(Boolean);
+  }
+  return [];
+};
 
 const getEmployeeMatchKey = (user = {}) => {
   const parts = [
@@ -27,13 +33,19 @@ const getUpdateMatchKeys = (update = {}) => {
 
 const matchesEmployee = (update, user) => {
   const updateKeys = getUpdateMatchKeys(update);
-  const userKey = getEmployeeMatchKey(user);
-  if (!updateKeys.length || !userKey) {
+  const userKeys = [
+    String(user?.id || '').trim().toLowerCase(),
+    String(user?.email || '').trim().toLowerCase(),
+    String(user?.employeeId || '').trim().toLowerCase(),
+    String(user?.name || '').trim().toLowerCase()
+  ].filter(Boolean);
+  if (!updateKeys.length || !userKeys.length) {
     return false;
   }
 
-  const normalizedUserKey = userKey.toLowerCase();
-  return updateKeys.some((key) => normalizedUserKey.includes(key.toLowerCase()) || key.toLowerCase().includes(normalizedUserKey));
+  return updateKeys.some((updateKey) => userKeys.some((userKey) => (
+    updateKey === userKey || updateKey.includes(userKey) || userKey.includes(updateKey)
+  )));
 };
 
 export const getRangeStart = (range, now = new Date()) => {
@@ -124,7 +136,9 @@ export const buildTeamAnalytics = ({ updates, users, range, now = new Date() }) 
     };
   });
 
-  const submittedCount = rangeUpdates.length;
+  const submittedCount = activeEmployees.filter((user) => (
+    rangeUpdates.some((update) => update.employeeId === user.id || matchesEmployee(update, user))
+  )).length;
   const pendingCount = Math.max(0, activeEmployees.length - submittedCount);
   const completionRate = activeEmployees.length > 0 ? Math.round((submittedCount / activeEmployees.length) * 100) : 0;
   const blockerCount = rangeUpdates.reduce((sum, update) => {

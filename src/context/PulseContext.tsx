@@ -65,6 +65,11 @@ export interface UpdateRecord {
   timestamp: string;
   createdAt?: string;
   comments: Comment[];
+  user?: {
+    name: string;
+    email: string;
+    department?: string;
+  };
 }
 
 export interface IntegrationLog {
@@ -97,7 +102,7 @@ export interface AttendanceRecord {
   workingHours?: string;
   idleTime?: string;
   productiveHours?: string;
-  status: 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Auto Logout';
+  status: 'Present' | 'Absent' | 'Late' | 'Half Day';
   officeRemote?: 'Office' | 'Remote';
   ipAddress?: string;
   device?: string;
@@ -166,7 +171,7 @@ const initialUsers: User[] = [
   { id: 'u-sandeep', name: 'Sandeep', email: 'sandeep@maplelearningsolutions.com', role: 'executive', department: 'Web Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0001', active: true, avatarColor: '#ec4899', password: 'executive' },
   { id: 'u-krishna', name: 'Krishna', email: 'krishna@maplelearningsolutions.com', role: 'executive', department: 'eLearning Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0002', active: true, avatarColor: '#6366f1', password: 'executive' },
   { id: 'u-rathish', name: 'Rathish', email: 'rathish@maplelearningsolutions.com', role: 'executive', department: 'Marketing & Sales Team', pod: 'UAE Pod', reportingManager: 'CEO', employeeId: 'MP-0003', active: true, avatarColor: '#f59e0b', password: 'executive' }
-  ,{ id: 'u-renuka', name: 'Renuka', email: 'renuka@maplelearningsolutions.com', role: 'employee', department: 'Client Success', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0004', active: true, avatarColor: '#7c3aed', password: 'executive' }
+  ,{ id: 'u-renuka', name: 'Renuka', email: 'renuka@maplelearningsolutions.com', role: 'employee', department: 'Marketing & Sales Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0004', active: true, avatarColor: '#7c3aed', password: 'executive' }
 ];
 
 const initialNotifications: SystemNotification[] = [
@@ -306,10 +311,10 @@ const mergeAttendanceRecords = (existing: AttendanceRecord[], incoming: Attendan
           date: entry.date || previous.date || '',
           loginTime: entry.loginTime || previous.loginTime || '',
           logoutTime: entry.logoutTime || previous.logoutTime || '',
-          workingHours: entry.workingHours || previous.workingHours || '0h',
+          workingHours: entry.workingHours && entry.workingHours !== '0h 0m' ? entry.workingHours : previous.workingHours || entry.workingHours || '0h',
           idleTime: entry.idleTime || previous.idleTime || '0m',
           productiveHours: entry.productiveHours || previous.productiveHours || '0h',
-          status: entry.status || previous.status || 'Present',
+          status: entry.logoutTime ? 'Present' : (previous.status || entry.status || 'Present'),
           officeRemote: entry.officeRemote || previous.officeRemote || 'Remote',
           ipAddress: entry.ipAddress || previous.ipAddress || '',
           device: entry.device || previous.device || '',
@@ -739,20 +744,20 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const sendLiveGmail = async (recipientEmail: string, subject: string, body: string) => {
-    if (!apiBase || !currentUser?.email) {
+    if (!apiBase) {
       return;
     }
 
     const payload = {
       endpoint: `${apiBase}/api/send-gmail`,
-      request: { senderEmail: currentUser.email, to: recipientEmail, subject, message: body }
+      request: { senderEmail: 'info@maplelearningsolutions.com', to: recipientEmail, subject, message: body }
     };
 
     try {
       const response = await fetch(`${apiBase}/api/send-gmail`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ senderEmail: currentUser.email, to: recipientEmail, subject, message: body })
+        body: JSON.stringify({ senderEmail: 'info@maplelearningsolutions.com', to: recipientEmail, subject, message: body })
       });
       const result = await response.json().catch(() => null);
       logIntegration('gmail', recipientEmail, subject, body, { ...payload, result, status: response.status });

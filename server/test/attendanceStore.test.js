@@ -17,5 +17,5 @@ test('attendance store merges records for the same user and date even when atten
   assert.equal(all.length, 1);
   assert.equal(all[0].loginTime, '09:00');
   assert.equal(all[0].logoutTime, '18:00');
-  assert.equal(all[0].status, 'Auto Logout');
+  assert.equal(all[0].status, 'Present');
 });
