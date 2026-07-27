@@ -26,20 +26,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     const role = currentUser.role;
     const items = [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'executive', 'employee'] },
-      { id: 'checkins', label: 'Check-ins', icon: Activity, roles: ['admin', 'executive', 'employee'] },
+      { id: 'checkins', label: 'Check-ins', icon: Activity, roles: ['employee'] },
       { id: 'reports', label: 'Reports', icon: BarChart3, roles: ['admin', 'executive', 'employee'] },
       { id: 'communications', label: 'Mail & Chat Clients', icon: MessageSquare, roles: ['admin', 'executive', 'employee'] },
       { id: 'org', label: 'Team Structure', icon: Users, roles: ['admin', 'executive', 'employee'] },
       { id: 'attendance', label: 'Attendance', icon: CalendarCheck2, roles: ['admin', 'executive', 'employee'] }
     ];
 
-    if (role === 'admin' || role === 'executive' || role === 'employer') {
+    if (role === 'admin' || role === 'super_admin' || role === 'executive' || role === 'employer') {
       items.push(
         { id: 'analytics', label: 'Reports & Analytics', icon: BarChart3, roles: ['admin', 'executive', 'employer'] }
       );
     }
 
-    if (role === 'admin') {
+    if (role === 'admin' || role === 'super_admin') {
       items.push(
         { id: 'admin-panel', label: 'Admin Control', icon: Shield, roles: ['admin'] }
       );
@@ -104,6 +104,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
           {menuItems.map(item => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
+            const isVisibleForRole = item.roles.includes(currentUser.role);
+            if (!isVisibleForRole) return null;
             return (
               <button
                 key={item.id}
@@ -168,7 +170,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
               {currentUser.name}
             </p>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
-              {currentUser.role === 'admin' ? 'CEO & Admin' : currentUser.role}
+              {currentUser.role === 'admin' ? 'CEO & Admin' : currentUser.role === 'super_admin' ? 'Super Admin' : currentUser.role}
             </p>
           </div>
         </div>

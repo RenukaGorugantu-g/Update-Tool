@@ -6,7 +6,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'executive' | 'employer' | 'employee';
+  role: 'admin' | 'super_admin' | 'executive' | 'employer' | 'employee';
   department: string;
   pod: 'India Pod' | 'UAE Pod';
   reportingManager: string;
@@ -168,7 +168,7 @@ interface PulseContextType {
 // --- Seed Data (Admin + Executives only, No Fake Data for Employees/Updates) ---
 const initialUsers: User[] = [
   { id: 'u-admin', name: 'Admin Root', email: 'info@maplelearningsolutions.com', role: 'admin', department: 'Management', pod: 'India Pod', reportingManager: 'Board', employeeId: 'MP-0000', active: true, avatarColor: '#dc2626', password: 'admin' },
-  { id: 'u-sandeep', name: 'Sandeep', email: 'sandeep@maplelearningsolutions.com', role: 'executive', department: 'Web Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0001', active: true, avatarColor: '#ec4899', password: 'executive' },
+  { id: 'u-sandeep', name: 'Sandeep', email: 'sandeep@maplelearningsolutions.com', role: 'super_admin', department: 'Web Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0001', active: true, avatarColor: '#ec4899', password: 'executive' },
   { id: 'u-krishna', name: 'Krishna', email: 'krishna@maplelearningsolutions.com', role: 'executive', department: 'eLearning Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0002', active: true, avatarColor: '#6366f1', password: 'executive' },
   { id: 'u-rathish', name: 'Rathish', email: 'rathish@maplelearningsolutions.com', role: 'executive', department: 'Marketing & Sales Team', pod: 'UAE Pod', reportingManager: 'CEO', employeeId: 'MP-0003', active: true, avatarColor: '#f59e0b', password: 'executive' }
   ,{ id: 'u-renuka', name: 'Renuka', email: 'renuka@maplelearningsolutions.com', role: 'employee', department: 'Marketing & Sales Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0004', active: true, avatarColor: '#7c3aed', password: 'executive' }
@@ -1251,11 +1251,16 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const askExecutiveAI = async (query: string): Promise<string> => {
     await new Promise(resolve => setTimeout(resolve, 1200));
     const lower = query.toLowerCase();
-    
+
     const today = new Date().toISOString().split('T')[0];
-    const todayUpdates = updates.filter((u) => {
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterday = yesterdayDate.toISOString().split('T')[0];
+    const requestedDate = lower.includes('yesterday') ? yesterday : today;
+    const requestedDateLabel = lower.includes('yesterday') ? 'yesterday' : 'today';
+    const scopeUpdates = updates.filter((u) => {
       const updateDate = String(u.date || u.timestamp?.slice(0, 10) || '').slice(0, 10);
-      return updateDate === today;
+      return updateDate === requestedDate;
     });
     const activeEmployees = users.filter(u => u.role === 'employee' && u.active);
     const matchesEmployee = (update: any, employee: any) => {
@@ -1287,39 +1292,39 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (activeEmployees.length === 0) {
         return "There are no employees registered in the company directory yet. Admin must add employees first.";
       }
-      const submittedMatches = todayUpdates.filter((update) => activeEmployees.some((employee) => employee.id === update.employeeId || matchesEmployee(update, employee)));
+      const submittedMatches = scopeUpdates.filter((update) => activeEmployees.some((employee) => employee.id === update.employeeId || matchesEmployee(update, employee)));
       const missing = activeEmployees.filter((employee) => !submittedMatches.some((update) => update.employeeId === employee.id || matchesEmployee(update, employee)));
-      
+
       if (missing.length === 0) {
-        return "All registered employees have submitted their daily updates for today!";
+        return `All registered employees have submitted their ${requestedDateLabel} updates!`;
       }
-      return `Here are the **${missing.length} employees** who haven't submitted today's update:\n` +
+      return `Here are the **${missing.length} employees** who haven't submitted ${requestedDateLabel === 'today' ? "today's" : "yesterday's"} update:\n` +
         missing.map(e => `- **${e.name}** (${e.department}, Location: ${e.pod})`).join('\n');
     }
 
     // Query 2: Which projects are blocked? or Blockers
     if (lower.includes('block') || lower.includes('stuck') || lower.includes('issue')) {
-      const blockedUpdates = todayUpdates.filter(u => u.blockers.length > 0 && u.blockers[0].toLowerCase() !== 'none' && u.blockers[0].toLowerCase() !== 'none reported' && u.blockers[0].trim() !== '');
+      const blockedUpdates = scopeUpdates.filter(u => u.blockers.length > 0 && u.blockers[0].toLowerCase() !== 'none' && u.blockers[0].toLowerCase() !== 'none reported' && u.blockers[0].trim() !== '');
       if (blockedUpdates.length === 0) {
-        return "No active blockers have been flagged by employees today.";
+        return `No active blockers have been flagged by employees ${requestedDateLabel}.`;
       }
-      return `We have **${blockedUpdates.length} active blockers** flagged today:\n\n` +
-        blockedUpdates.map((u, i) => 
-          `${i+1}. **${u.employeeName}** (*${u.projectName}*) - ${u.priority.toUpperCase()} priority\n` +
+      return `We have **${blockedUpdates.length} active blockers** flagged ${requestedDateLabel}:\n\n` +
+        blockedUpdates.map((u, i) =>
+          `${i + 1}. **${u.employeeName}** (*${u.projectName}*) - ${u.priority.toUpperCase()} priority\n` +
           `   - **Blocker:** ${u.blockers.join(', ')}`
         ).join('\n\n');
     }
 
-    // Query 3: Summarize today's company activity / report
-    if (lower.includes('summarize') || lower.includes('report') || lower.includes('overview') || lower.includes('today')) {
-      if (todayUpdates.length === 0) {
-        return "No updates have been submitted by employees yet today. Summary will generate once status submissions roll in.";
+    // Query 3: Summarize today's or yesterday's company activity / report
+    if (lower.includes('summarize') || lower.includes('report') || lower.includes('overview') || lower.includes('today') || lower.includes('yesterday')) {
+      if (scopeUpdates.length === 0) {
+        return `No updates have been submitted by employees ${requestedDateLabel === 'today' ? 'today' : 'yesterday'}. Summary will generate once status submissions roll in.`;
       }
-      const blockersCount = todayUpdates.filter(u => u.blockers.length > 0 && u.blockers[0].toLowerCase() !== 'none' && u.blockers[0].trim() !== '').length;
-      return `### Maple Pulse Operations Summary\n\n` +
-        `- **Submission Compliance**: ${todayUpdates.length} of ${activeEmployees.length} employees submitted updates.\n` +
+      const blockersCount = scopeUpdates.filter(u => u.blockers.length > 0 && u.blockers[0].toLowerCase() !== 'none' && u.blockers[0].trim() !== '').length;
+      return `### Maple Pulse Operations Summary (${requestedDateLabel})\n\n` +
+        `- **Submission Compliance**: ${scopeUpdates.length} of ${activeEmployees.length} employees submitted updates.\n` +
         `- **Blockers Flagged**: ${blockersCount} active blocker flag(s) requiring attention.\n` +
-        `- **Projects Represented**: ${Array.from(new Set(todayUpdates.map(u => u.projectName))).join(', ')}.\n\n` +
+        `- **Projects Represented**: ${Array.from(new Set(scopeUpdates.map(u => u.projectName))).join(', ')}.\n\n` +
         `Ask me for details on specific blockers to follow up.`;
     }
 
@@ -1329,13 +1334,13 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const empUpdates = updates
         .filter((u) => u.employeeId === matchedEmployee.id || matchesEmployee(u, matchedEmployee))
         .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
-      const todaysUpdates = empUpdates.filter((u) => u.date === today);
-      const relevantUpdates = todaysUpdates.length > 0 ? todaysUpdates : empUpdates.slice(0, 3);
-      if (relevantUpdates.length === 0) {
+      const relevantUpdates = empUpdates.filter((u) => u.date === requestedDate);
+      const fallbackUpdates = relevantUpdates.length > 0 ? relevantUpdates : empUpdates.slice(0, 3);
+      if (fallbackUpdates.length === 0) {
         return `**${matchedEmployee.name}** (${matchedEmployee.department}) has not submitted any updates yet.`;
       }
-      return `### Status Logs for ${matchedEmployee.name}\n\n` +
-        relevantUpdates.slice(0, 3).map(u => 
+      return `### Status Logs for ${matchedEmployee.name} (${requestedDateLabel})\n\n` +
+        fallbackUpdates.slice(0, 3).map(u =>
           `**Date: ${u.date}** (Priority: ${u.priority.toUpperCase()})\n` +
           `- **Completed:** ${u.completed.join('; ')}\n` +
           `- **Working:** ${u.working.join('; ')}\n` +
@@ -1345,6 +1350,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return `I can analyze real-time workspace updates. Ask me: \n` +
       `- "Who has not updated today?"\n` +
+      `- "Who has not updated yesterday?"\n` +
       `- "Which projects are blocked?"\n` +
       `- "Summarize today's company activity"\n` +
       `- "Show [Employee Name]'s updates"`;

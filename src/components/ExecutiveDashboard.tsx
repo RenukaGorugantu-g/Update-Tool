@@ -43,6 +43,7 @@ export const ExecutiveDashboard: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
 
   const analytics = useMemo(() => buildTeamAnalytics({ updates, users, range: selectedRange }), [updates, users, selectedRange]);
+  const canUseAssistant = currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'employer';
   const sprintUpdates = analytics.rangeUpdates;
   const todayStr = new Date().toISOString().split('T')[0];
   const todayUpdates = sprintUpdates.filter((u) => u.date === todayStr);
@@ -106,27 +107,28 @@ export const ExecutiveDashboard: React.FC = () => {
       
       {/* comments moved to Reports view */}
 
-      {/* Floating AI Panel Toggle */}
-      <button 
-        onClick={() => setIsChatOpen(!isChatOpen)}
-        className="btn btn-primary"
-        style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          zIndex: 100,
-          boxShadow: '0 8px 24px rgba(221,36,118,0.25)',
-          borderRadius: '30px',
-          padding: '12px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          border: 'none'
-        }}
-      >
-        <Bot size={20} />
-        <span>Ask AI Assistant</span>
-      </button>
+      {canUseAssistant ? (
+        <button 
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          className="btn btn-primary"
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 100,
+            boxShadow: '0 8px 24px rgba(221,36,118,0.25)',
+            borderRadius: '30px',
+            padding: '12px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            border: 'none'
+          }}
+        >
+          <Bot size={20} />
+          <span>Ask AI Assistant</span>
+        </button>
+      ) : null}
 
       {/* Header Area */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -139,14 +141,16 @@ export const ExecutiveDashboard: React.FC = () => {
           </p>
         </div>
 
-        <button 
-          onClick={() => setIsChatOpen(true)}
-          className="btn btn-secondary" 
-          style={{ gap: '8px', padding: '10px 16px', fontSize: '0.85rem' }}
-        >
-          <Bot size={16} style={{ color: 'var(--accent-primary)' }} />
-          <span>Launch AI Copilot</span>
-        </button>
+        {canUseAssistant ? (
+          <button 
+            onClick={() => setIsChatOpen(true)}
+            className="btn btn-secondary" 
+            style={{ gap: '8px', padding: '10px 16px', fontSize: '0.85rem' }}
+          >
+            <Bot size={16} style={{ color: 'var(--accent-primary)' }} />
+            <span>Launch AI Copilot</span>
+          </button>
+        ) : null}
       </div>
 
       {/* Landing-style summary badges */}
@@ -539,7 +543,9 @@ export const ExecutiveDashboard: React.FC = () => {
       </div>
 
       {/* Slide-out AI Panel Drawer */}
-      <ExecutiveAIChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+      {canUseAssistant ? (
+        <ExecutiveAIChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+      ) : null}
     </div>
   );
 };
