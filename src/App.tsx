@@ -72,9 +72,12 @@ function App() {
   const [attendanceWidgetAccumulatedSeconds, setAttendanceWidgetAccumulatedSeconds] = useState(0);
   const [attendanceWidgetStartedAt, setAttendanceWidgetStartedAt] = useState<number | null>(null);
   const attendanceWidgetLastTickRef = useRef(Date.now());
+  const attendanceWidgetLastActivityRef = useRef(Date.now());
   const attendanceWidgetSessionFinalizedRef = useRef(false);
   const manualPauseRef = useRef(false);
+  const ATTENDANCE_WIDGET_IDLE_TIMEOUT_SECONDS = 10 * 60;
   const apiBase = getApiBase();
+  const attendanceWidgetStorageKey = currentUser?.id ? `pulse-attendance-widget-${currentUser.id}` : null;
   const isEmployeeView = currentUser?.role?.toLowerCase() === 'employee';
   const canUseAssistant = Boolean(currentUser && ['admin', 'super_admin', 'employer'].includes(currentUser.role));
 
@@ -249,6 +252,7 @@ function App() {
       setAttendanceWidgetAccumulatedSeconds(0);
       setAttendanceWidgetStartedAt(now.getTime());
       attendanceWidgetLastTickRef.current = now.getTime();
+      attendanceWidgetLastActivityRef.current = now.getTime();
     } else {
       const completedSeconds = Math.max(1, attendanceWidgetActive ? attendanceWidgetAccumulatedSeconds + (attendanceWidgetPaused ? 0 : attendanceWidgetElapsed) : attendanceWidgetAccumulatedSeconds);
       attendanceWidgetSessionFinalizedRef.current = true;
@@ -271,6 +275,10 @@ function App() {
       browser,
       os
     });
+  };
+
+  const updateAttendanceWidgetLastActivity = () => {
+    attendanceWidgetLastActivityRef.current = Date.now();
   };
 
   const pauseAttendanceWidgetForSuspend = () => {
@@ -297,6 +305,7 @@ function App() {
       manualPauseRef.current = false;
       const now = Date.now();
       attendanceWidgetLastTickRef.current = now;
+      attendanceWidgetLastActivityRef.current = now;
       setAttendanceWidgetStartedAt(now);
       setAttendanceWidgetPaused(false);
       setAttendanceWidgetElapsed(0);
@@ -314,13 +323,67 @@ function App() {
       return;
     }
 
+    if (!attendanceWidgetStorageKey) {
+      setAttendanceWidgetActive(false);
+      setAttendanceWidgetPaused(false);
+      setAttendanceWidgetElapsed(0);
+      setAttendanceWidgetAccumulatedSeconds(0);
+      setAttendanceWidgetStartedAt(null);
+      attendanceWidgetSessionFinalizedRef.current = false;
+      return;
+    }
+
+    const saved = localStorage.getItem(attendanceWidgetStorageKey);
+    if (saved) return;
+
     setAttendanceWidgetActive(false);
     setAttendanceWidgetPaused(false);
     setAttendanceWidgetElapsed(0);
     setAttendanceWidgetAccumulatedSeconds(0);
     setAttendanceWidgetStartedAt(null);
     attendanceWidgetSessionFinalizedRef.current = false;
-  }, [currentUser?.id]);
+  }, [attendanceWidgetStorageKey, currentUser?.id]);
+
+  useEffect(() => {
+    if (!attendanceWidgetStorageKey) return;
+    try {
+      const saved = localStorage.getItem(attendanceWidgetStorageKey);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      const today = new Date().toISOString().split('T')[0];
+      if (parsed?.date !== today) {
+        localStorage.removeItem(attendanceWidgetStorageKey);
+        return;
+      }
+
+      setAttendanceWidgetActive(Boolean(parsed.active));
+      setAttendanceWidgetPaused(Boolean(parsed.paused));
+      setAttendanceWidgetAccumulatedSeconds(Number(parsed.accumulatedSeconds || 0));
+      setAttendanceWidgetStartedAt(parsed.sessionStartedAt ? Number(parsed.sessionStartedAt) : null);
+      if (Boolean(parsed.active) && !Boolean(parsed.paused) && parsed.sessionStartedAt) {
+        setAttendanceWidgetElapsed(Math.max(0, Math.floor((Date.now() - Number(parsed.sessionStartedAt)) / 1000)));
+        attendanceWidgetLastActivityRef.current = Date.now();
+      }
+    } catch (error) {
+      console.warn('Unable to restore attendance widget state:', error);
+    }
+  }, [attendanceWidgetStorageKey]);
+
+  useEffect(() => {
+    if (!attendanceWidgetStorageKey) return;
+    const payload = {
+      date: new Date().toISOString().split('T')[0],
+      active: attendanceWidgetActive,
+      paused: attendanceWidgetPaused,
+      accumulatedSeconds: attendanceWidgetAccumulatedSeconds,
+      sessionStartedAt: attendanceWidgetStartedAt
+    };
+    if (attendanceWidgetActive || attendanceWidgetPaused || attendanceWidgetAccumulatedSeconds > 0) {
+      localStorage.setItem(attendanceWidgetStorageKey, JSON.stringify(payload));
+    } else {
+      localStorage.removeItem(attendanceWidgetStorageKey);
+    }
+  }, [attendanceWidgetStorageKey, attendanceWidgetActive, attendanceWidgetPaused, attendanceWidgetAccumulatedSeconds, attendanceWidgetStartedAt]);
 
   useEffect(() => {
     if (!attendanceWidgetActive) {
@@ -345,28 +408,55 @@ function App() {
     };
   }, [attendanceWidgetActive, attendanceWidgetPaused, attendanceWidgetStartedAt]);
 
+  useEffect(() => {
+    if (!currentUser || !attendanceWidgetActive || attendanceWidgetPaused) return;
+
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'wheel', 'scroll'];
+    const activityHandler = () => updateAttendanceWidgetLastActivity();
+
+    activityEvents.forEach((eventName) => window.addEventListener(eventName, activityHandler));
+    return () => {
+      activityEvents.forEach((eventName) => window.removeEventListener(eventName, activityHandler));
+    };
+  }, [attendanceWidgetActive, attendanceWidgetPaused, currentUser]);
+
+  useEffect(() => {
+    if (!attendanceWidgetActive || attendanceWidgetPaused) return;
+
+    const checkIdle = () => {
+      if (Date.now() - attendanceWidgetLastActivityRef.current >= ATTENDANCE_WIDGET_IDLE_TIMEOUT_SECONDS * 1000) {
+        pauseAttendanceWidgetForSuspend();
+      }
+    };
+
+    const idleTimer = window.setInterval(checkIdle, 1000);
+    return () => window.clearInterval(idleTimer);
+  }, [attendanceWidgetActive, attendanceWidgetPaused]);
 
   useEffect(() => {
     if (!currentUser || !attendanceWidgetActive) return;
-    const handleSuspend = () => {
-      pauseAttendanceWidgetForSuspend();
-    };
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        handleSuspend();
+      if (document.visibilityState === 'visible') {
+        updateAttendanceWidgetLastActivity();
       }
     };
-    window.addEventListener('blur', handleSuspend);
-    window.addEventListener('pagehide', handleSuspend);
-    window.addEventListener('beforeunload', handleSuspend);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-      window.removeEventListener('blur', handleSuspend);
-      window.removeEventListener('pagehide', handleSuspend);
-      window.removeEventListener('beforeunload', handleSuspend);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [attendanceWidgetActive, currentUser, attendanceWidgetPaused, attendanceWidgetStartedAt]);
+  }, [attendanceWidgetActive, currentUser]);
+
+  const attendanceWidgetStatusLabel = !attendanceWidgetActive
+    ? 'Not started'
+    : attendanceWidgetPaused
+      ? 'Paused'
+      : 'Active now';
+
+  const attendanceWidgetStatusDetail = !attendanceWidgetActive
+    ? 'Clock in to start tracking your time.'
+    : attendanceWidgetPaused
+      ? 'Resume to continue tracking.'
+      : 'Tracking your active time now.';
 
   const getUnreadNotificationsCount = () => {
     return notifications.filter(n => !n.read).length;
@@ -459,9 +549,13 @@ function App() {
       ) : null}
       {currentUser && isEmployeeView && attendanceWidgetActive ? (
         <div style={{ position: 'fixed', right: '14px', bottom: '14px', zIndex: 1600, display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '14px', background: 'rgba(2, 8, 23, 0.94)', border: '1px solid rgba(52, 211, 153, 0.3)', boxShadow: '0 16px 38px rgba(0, 0, 0, 0.28)', color: '#f8fafc' }}>
-          <div style={{ minWidth: '92px' }}>
-            <div style={{ fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#86efac', fontWeight: 700 }}>Live timer</div>
+          <div style={{ minWidth: '120px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: attendanceWidgetPaused ? '#fbbf24' : '#86efac', fontWeight: 700 }}>
+              <span style={{ width: '7px', height: '7px', borderRadius: '999px', background: attendanceWidgetPaused ? '#f59e0b' : '#34d399', display: 'inline-block' }} />
+              {attendanceWidgetStatusLabel}
+            </div>
             <div style={{ marginTop: '2px', fontSize: '0.96rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{formatDurationLabel(attendanceWidgetAccumulatedSeconds + (attendanceWidgetPaused ? 0 : attendanceWidgetElapsed))}</div>
+            <div style={{ marginTop: '2px', fontSize: '0.68rem', color: '#cbd5e1' }}>{attendanceWidgetStatusDetail}</div>
           </div>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             <button type="button" onClick={toggleAttendanceWidgetPause} style={{ border: 'none', borderRadius: '8px', padding: '6px 8px', background: attendanceWidgetPaused ? '#0f766e' : '#7c2d12', color: '#fff7ed', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
