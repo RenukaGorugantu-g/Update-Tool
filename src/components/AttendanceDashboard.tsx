@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { usePulse } from '../context/PulseContext';
 import {
   CalendarDays,
@@ -71,27 +71,10 @@ export const AttendanceDashboard: React.FC = () => {
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null);
   const [attendanceMessage, setAttendanceMessage] = useState('Ready to clock in');
   const [clockNow, setClockNow] = useState(() => new Date());
-  const lastActivityRef = useRef<number>(Date.now());
-  const IDLE_TIMEOUT_SECONDS = 10 * 60;
   const currentSessionKey = currentUser?.id ? `pulse-attendance-session-${currentUser.id}` : 'pulse-attendance-session';
   const today = new Date().toISOString().split('T')[0];
   const lastTimerTickRef = useRef(Date.now());
-  const manualPauseRef = useRef(false);
   const sessionFinalizedRef = useRef(false);
-
-  const updateLastActivity = () => {
-    lastActivityRef.current = Date.now();
-  };
-
-  const pauseAttendanceForSuspend = useCallback(() => {
-    if (!sessionActive || sessionPaused || sessionStartedAt === null) return;
-    const elapsed = Math.max(0, Math.floor((Date.now() - sessionStartedAt) / 1000));
-    setSessionAccumulatedSeconds((prev) => prev + elapsed);
-    setSessionStartedAt(null);
-    setSessionElapsed(0);
-    setSessionPaused(true);
-    setAttendanceMessage(`Paused due to inactivity at ${new Date().toTimeString().split(' ')[0]}. Resume when you are back.`);
-  }, [sessionActive, sessionPaused, sessionStartedAt]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setClockNow(new Date()), 30000);
@@ -122,7 +105,6 @@ export const AttendanceDashboard: React.FC = () => {
       setAttendanceMessage(parsed?.attendanceMessage || 'Ready to clock in');
       if (restoredActive && restoredStartedAt) {
         setSessionElapsed(Math.max(0, Math.floor((Date.now() - restoredStartedAt) / 1000)));
-        lastActivityRef.current = Date.now();
       }
     } catch (error) {
       console.warn('Unable to restore attendance session state:', error);
@@ -131,7 +113,7 @@ export const AttendanceDashboard: React.FC = () => {
 
   useEffect(() => {
     if (!sessionActive) {
-      setSessionPaused(false);
+      setSessionElapsed(0);
       return;
     }
 
@@ -155,30 +137,6 @@ export const AttendanceDashboard: React.FC = () => {
       window.clearInterval(timer);
     };
   }, [sessionActive, sessionPaused, sessionStartedAt]);
-
-  useEffect(() => {
-    if (!currentUser) return;
-    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'wheel', 'scroll'];
-    const activityHandler = () => updateLastActivity();
-
-    activityEvents.forEach((eventName) => window.addEventListener(eventName, activityHandler));
-    return () => {
-      activityEvents.forEach((eventName) => window.removeEventListener(eventName, activityHandler));
-    };
-  }, [currentUser]);
-
-  useEffect(() => {
-    if (!sessionActive || sessionPaused) return;
-
-    const checkIdle = () => {
-      if (Date.now() - lastActivityRef.current >= IDLE_TIMEOUT_SECONDS * 1000) {
-        pauseAttendanceForSuspend();
-      }
-    };
-
-    const idleTimer = window.setInterval(checkIdle, 1000);
-    return () => window.clearInterval(idleTimer);
-  }, [sessionActive, sessionPaused, pauseAttendanceForSuspend]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -205,21 +163,6 @@ export const AttendanceDashboard: React.FC = () => {
     window.dispatchEvent(new Event('pulse:attendance-session-sync'));
   }, [attendanceMessage, currentSessionKey, currentUser, sessionAccumulatedSeconds, sessionActive, sessionEnd, sessionLocation, sessionPaused, sessionStart, sessionStartedAt, today]);
 
-  useEffect(() => {
-    if (!currentUser || !sessionActive) return;
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        updateLastActivity();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [currentUser, sessionActive]);
-
   const parseMinutes = (value?: string) => {
     const normalized = String(value || '0h').trim();
     const hourMatch = normalized.match(/(\d+)h/);
@@ -244,7 +187,7 @@ export const AttendanceDashboard: React.FC = () => {
   const sessionStatusDetail = !sessionActive
     ? 'Clock in to begin tracking your active time.'
     : sessionPaused
-      ? 'Resume to continue from your current progress.'
+      ? 'Break in progress. Resume when you are back.'
       : 'Tracking your active screen time right now.';
 
   const statusOptions = ['All', 'Present', 'Late', 'Half Day', 'Absent'];
@@ -541,7 +484,6 @@ export const AttendanceDashboard: React.FC = () => {
     let completedSeconds = sessionAccumulatedSeconds;
     if (action === 'login') {
       sessionFinalizedRef.current = false;
-      manualPauseRef.current = false;
       setSessionActive(true);
       setSessionPaused(false);
       setSessionElapsed(0);
@@ -551,13 +493,11 @@ export const AttendanceDashboard: React.FC = () => {
       setSessionLocation(location);
       setSessionStartedAt(now.getTime());
       lastTimerTickRef.current = now.getTime();
-      lastActivityRef.current = now.getTime();
       setAttendanceMessage(`Clocked in at ${time}. Tracking active screen time only.`);
     } else {
       completedSeconds = Math.max(1, sessionActive ? sessionAccumulatedSeconds + (sessionPaused ? 0 : sessionElapsed) : sessionAccumulatedSeconds);
       const workedLabel = formatDurationLabel(completedSeconds);
       sessionFinalizedRef.current = true;
-      manualPauseRef.current = false;
       setSessionActive(false);
       setSessionPaused(false);
       setSessionAccumulatedSeconds(completedSeconds);
@@ -586,7 +526,7 @@ export const AttendanceDashboard: React.FC = () => {
     if (sessionPaused) {
       setSessionPaused(false);
       setSessionStartedAt(Date.now());
-      updateLastActivity();
+      setSessionElapsed(0);
       setAttendanceMessage(`Resumed at ${new Date().toTimeString().split(' ')[0]}. Tracking active screen time only.`);
     } else {
       if (sessionStartedAt !== null) {
@@ -595,7 +535,8 @@ export const AttendanceDashboard: React.FC = () => {
       }
       setSessionStartedAt(null);
       setSessionPaused(true);
-      setAttendanceMessage(`Paused at ${new Date().toTimeString().split(' ')[0]}. Progress is saved until you resume.`);
+      setSessionElapsed(0);
+      setAttendanceMessage(`Paused at ${new Date().toTimeString().split(' ')[0]}. Break mode is on.`);
     }
   };
 
@@ -647,7 +588,7 @@ export const AttendanceDashboard: React.FC = () => {
                   <span style={{ width: '7px', height: '7px', borderRadius: '999px', background: sessionPaused ? '#f59e0b' : sessionActive ? '#34d399' : '#94a3b8', display: 'inline-block' }} />
                   {sessionStatusLabel}
                 </span>
-                <span style={{ fontSize: '0.8rem', color: sessionPaused ? '#f59e0b' : 'var(--text-secondary)' }}>{sessionStatusDetail}</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{sessionStatusDetail}</span>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -695,7 +636,7 @@ export const AttendanceDashboard: React.FC = () => {
                     {formatDurationLabel(totalSessionSeconds)}
                   </span>
                   <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {sessionActive ? (<><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d399', display: 'inline-block', animation: 'pulse 1.6s ease-in-out infinite' }} /> active now</>) : sessionPaused ? 'paused' : 'ready'}
+                    {sessionActive ? (sessionPaused ? 'paused' : (<><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d399', display: 'inline-block', animation: 'pulse 1.6s ease-in-out infinite' }} /> active now</>)) : 'ready'}
                   </span>
                 </div>
               </div>

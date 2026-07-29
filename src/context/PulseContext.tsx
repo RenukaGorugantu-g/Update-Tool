@@ -877,17 +877,33 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       deliveryStatus = 'failed';
     }
 
+    const formatListSection = (label: string, emoji: string, bulletEmoji: string, items: string[]) => {
+      if (!items || items.length === 0 || items.every((item) => !String(item).trim())) {
+        return `${emoji} *${label}:* _No details provided_`;
+      }
+      const filtered = items.map((item) => String(item).trim()).filter(Boolean);
+      if (filtered.length === 0) {
+        return `${emoji} *${label}:* _No details provided_`;
+      }
+      return [
+        `${emoji} *${label}:*`,
+        ...filtered.map((item) => `${bulletEmoji} ${item}`)
+      ].join('\n');
+    };
+
     const summaryText = [
-      `Hi team, here is the update from ${currentUser.name} for ${record.projectName}`,
-      `Employee: ${currentUser.name}`,
-      `Department: ${currentUser.department}`,
-      `Priority: ${record.priority}`,
+      `*Maple Pulse Daily Update — ${record.projectName}*`,
+      `*Employee:* ${currentUser.name}`,
+      `*Department:* ${currentUser.department}`,
+      `*Priority:* ${record.priority}`,
       '',
-      `Yesterday: ${record.completed.length > 0 ? record.completed.join(' • ') : 'No details provided'}`,
-      `Today: ${record.working.length > 0 ? record.working.join(' • ') : 'No details provided'}`,
-      `Blockers: ${record.blockers.length > 0 ? record.blockers.join(' • ') : 'No blockers reported'}`,
+      formatListSection('Yesterday', '🟦', '🔹', record.completed),
       '',
-      'Please review this progress and follow up if any support is needed.'
+      formatListSection('Today', '🟢', '✅', record.working),
+      '',
+      formatListSection('Blockers', '🔴', '⚠️', record.blockers),
+      '',
+      '_Please review and follow up if any support is needed._'
     ].join('\n');
 
     const hasBlockers = record.blockers.length > 0 && 
