@@ -410,8 +410,48 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(() => {
     const saved = localStorage.getItem('pulse-attendance');
-    return saved ? JSON.parse(saved) : [];
+    return saved ? JSON.parse(saved).map((e: any) => normalizeAttendanceRecord(e)) : [];
   });
+
+  const normalizeAttendanceRecord = (entry: any): AttendanceRecord => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const email = String(entry.email || '').trim().toLowerCase();
+    const matchedUser = email ? users.find((user) => user.email.toLowerCase() === email) : undefined;
+    const resolvedUserId = String(entry.userId || matchedUser?.id || '').trim();
+    const resolvedEmployeeName = String(entry.employeeName || matchedUser?.name || '').trim() || matchedUser?.name || '';
+    const resolvedDepartment = String(entry.department || matchedUser?.department || '').trim() || matchedUser?.department || '';
+    const date = String(entry.date || entry.createdAt?.slice(0, 10) || todayStr).trim();
+    const status = ['Present', 'Absent', 'Late', 'Half Day'].includes(String(entry.status)) ? entry.status : 'Present';
+    const officeRemote = String(entry.officeRemote) === 'Office' ? 'Office' : 'Remote';
+    const createdAt = String(entry.createdAt || new Date().toISOString());
+    const updatedAt = String(entry.updatedAt || new Date().toISOString());
+
+    return {
+      attendanceId: String(entry.attendanceId || `att-${resolvedUserId || 'unknown'}-${date}`),
+      userId: resolvedUserId,
+      employeeName: resolvedEmployeeName,
+      email,
+      department: resolvedDepartment,
+      date,
+      loginTime: String(entry.loginTime || '').trim(),
+      logoutTime: String(entry.logoutTime || '').trim(),
+      workingHours: String(entry.workingHours || '0h').trim(),
+      idleTime: String(entry.idleTime || '0m').trim(),
+      productiveHours: String(entry.productiveHours || '0h').trim(),
+      status,
+      officeRemote,
+      ipAddress: String(entry.ipAddress || '').trim(),
+      device: String(entry.device || '').trim(),
+      browser: String(entry.browser || '').trim(),
+      os: String(entry.os || '').trim(),
+      createdAt,
+      updatedAt
+    };
+  };
+
+  const mergeAttendanceEntries = (existing: AttendanceRecord[], incoming: Partial<AttendanceRecord>[]) => {
+    return mergeAttendanceRecords(existing, incoming.map(normalizeAttendanceRecord));
+  };
 
   const [isVoiceLoading, setIsVoiceLoading] = useState(false);
 
@@ -525,6 +565,23 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const apiBase = getApiBase();
 
+  const refreshAttendanceFromBackend = async () => {
+    if (!apiBase) return;
+    try {
+      const response = await fetch(`${apiBase}/api/attendance`);
+      const json = await response.json().catch(() => null);
+      if (json?.success && Array.isArray(json.attendance)) {
+        setAttendance((prev) => {
+          const next = mergeAttendanceRecords(prev, json.attendance);
+          localStorage.setItem('pulse-attendance', JSON.stringify(next));
+          return next;
+        });
+      }
+    } catch (err) {
+      console.warn('Unable to refresh attendance from backend:', err);
+    }
+  };
+
   const persistUsers = async (nextUsers: User[]) => {
     // Persist locally first for immediate UX
     localStorage.setItem('pulse-users', JSON.stringify(nextUsers));
@@ -612,7 +669,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const attendanceJson = await attendanceResp.json().catch(() => null);
         if (!cancelled && attendanceJson?.success && Array.isArray(attendanceJson.attendance)) {
           setAttendance((prev) => {
-            const next = mergeAttendanceRecords(prev, attendanceJson.attendance);
+            const next = mergeAttendanceEntries(prev, attendanceJson.attendance);
             localStorage.setItem('pulse-attendance', JSON.stringify(next));
             return next;
           });
@@ -708,7 +765,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setAttendance((prev) => {
-      const nextList = mergeAttendanceRecords(prev, [attendanceEntry]);
+      const nextList = mergeAttendanceEntries(prev, [attendanceEntry]);
       localStorage.setItem('pulse-attendance', JSON.stringify(nextList));
       return nextList;
     });
@@ -727,12 +784,12 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(attendanceEntry)
       });
+      await refreshAttendanceFromBackend();
     } catch (err) {
       console.warn('attendance sync failed', err);
     }
-  };
 
-  const trackEvent = (name: string, payload?: any) => {
+  function trackEvent(name: string, payload?: any) {
     try {
       const item = { id: `evt-${Date.now()}`, name, payload: payload || {}, timestamp: new Date().toISOString() };
       const stored = localStorage.getItem('pulse-analytics');
@@ -745,7 +802,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch (err) {
       console.warn('trackEvent failed', err);
     }
-  };
+  }
 
   const sendLiveGmail = async (recipientEmail: string, subject: string, body: string) => {
     if (!apiBase) {

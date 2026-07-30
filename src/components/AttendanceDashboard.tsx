@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { usePulse } from '../context/PulseContext';
+import { usePulse, AttendanceRecord, User } from '../context/PulseContext';
 import {
   CalendarDays,
   Clock3,
@@ -212,10 +212,23 @@ export const AttendanceDashboard: React.FC = () => {
   const matchesEmployeeSelection = (entry: any, selectedValue: string) => {
     if (!selectedValue || selectedValue === 'all') return true;
     const selected = normalizeSelectionValue(selectedValue);
+    const selectedKeys = new Set<string>([selected]);
+
+    const matchedUser = users.find((user) => [user.id, user.email, user.name, user.employeeId]
+      .some((value) => normalizeSelectionValue(value) === selected));
+
+    if (matchedUser) {
+      [matchedUser.id, matchedUser.email, matchedUser.name, matchedUser.employeeId]
+        .map((value) => normalizeSelectionValue(value))
+        .filter(Boolean)
+        .forEach((value) => selectedKeys.add(value));
+    }
+
     const candidates = [entry.userId, entry.email, entry.employeeName]
       .map((value) => normalizeSelectionValue(value))
       .filter(Boolean);
-    return candidates.includes(selected);
+
+    return candidates.some((candidate) => selectedKeys.has(candidate));
   };
 
   const employeeOptions = useMemo(() => {
@@ -263,16 +276,16 @@ export const AttendanceDashboard: React.FC = () => {
   const getAttendanceRowKey = (entry: any) => entry.attendanceId || `${entry.userId || entry.employeeName || 'unknown'}-${entry.date || entry.createdAt?.slice(0, 10) || 'na'}-${entry.loginTime || ''}-${entry.logoutTime || ''}`;
 
   const employeeEntries = useMemo(() => {
-    if (!currentUser) return [] as any[];
+    if (!currentUser) return [] as AttendanceRecord[];
     return attendance
-      .filter((entry) => entry.userId === currentUser.id || entry.email === currentUser.email)
+      .filter((entry: AttendanceRecord) => entry.userId === currentUser.id || entry.email === currentUser.email)
       .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.loginTime || '').localeCompare(a.loginTime || ''));
   }, [attendance, currentUser]);
 
   const visibleEntries = useMemo(() => {
     const source = isEmployee ? employeeEntries : attendance;
     return source
-      .filter((entry) => {
+      .filter((entry: AttendanceRecord) => {
         const matchesEmployee = !canViewTeamAttendance || selectedEmployeeId === 'all' || matchesEmployeeSelection(entry, selectedEmployeeId);
         const matchesStatus = selectedStatus === 'All' || entry.status === selectedStatus;
         const haystack = `${entry.employeeName || ''} ${entry.department || ''} ${entry.email || ''}`.toLowerCase();
