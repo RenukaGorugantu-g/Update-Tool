@@ -225,7 +225,7 @@ function App() {
     }
   };
 
-  const renderActiveView = () => {
+  function renderActiveView() {
     if (!currentUser) return <Login />;
     switch (activeTab) {
       case 'dashboard':
@@ -250,7 +250,7 @@ function App() {
       default:
         return <EmployeeDashboard />;
     }
-  };
+  }
 
   if (!currentUser) {
     // Public routes: root shows landing, /daily shows Daily preview
