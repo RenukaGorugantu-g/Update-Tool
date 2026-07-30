@@ -54,7 +54,16 @@ export const AdminDashboard: React.FC = () => {
       persistUsersToBackend(nextUsers);
       return nextUsers;
     });
-    setAssignments((prev) => ({ ...prev, [targetUser.id]: { role: nextUser.role, department: nextUser.department, pod: nextUser.pod, reportingManager: nextUser.reportingManager } }));
+    setAssignments((prev) => ({
+      ...prev,
+      [targetUser.id]: {
+        role: nextUser.role,
+        department: nextUser.department,
+        pod: nextUser.pod,
+        reportingManager: nextUser.reportingManager,
+        employmentType: nextUser.employmentType
+      }
+    }));
   };
 
   const addRosterProfile = (event: React.FormEvent) => {
@@ -75,6 +84,7 @@ export const AdminDashboard: React.FC = () => {
       pod: 'India Pod' as const,
       reportingManager: 'Manager',
       employeeId: existing?.employeeId || `CL-${normalizedEmail.split('@')[0].slice(0, 6).toUpperCase()}`,
+      employmentType: existing?.employmentType || 'Full-time',
       active: existing?.active ?? true,
       avatarColor: existing?.avatarColor || '#10b981',
       password: existing?.password || 'password'
@@ -85,7 +95,16 @@ export const AdminDashboard: React.FC = () => {
         ? prev.map((candidate) => String(candidate.email || '').trim().toLowerCase() === normalizedEmail || String(candidate.id || '').trim().toLowerCase() === derivedId.toLowerCase() ? nextUser : candidate)
         : [...prev, nextUser];
       persistUsersToBackend(nextUsers);
-      setAssignments((current) => ({ ...current, [nextUser.id]: { role: nextUser.role, department: nextUser.department, pod: nextUser.pod, reportingManager: nextUser.reportingManager } }));
+      setAssignments((current) => ({
+        ...current,
+        [nextUser.id]: {
+          role: nextUser.role,
+          department: nextUser.department,
+          pod: nextUser.pod,
+          reportingManager: nextUser.reportingManager,
+          employmentType: nextUser.employmentType
+        }
+      }));
       return nextUsers;
     });
 
