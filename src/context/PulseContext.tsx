@@ -413,7 +413,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return saved ? JSON.parse(saved).map((e: any) => normalizeAttendanceRecord(e)) : [];
   });
 
-  const normalizeAttendanceRecord = (entry: any): AttendanceRecord => {
+  function normalizeAttendanceRecord(entry: any): AttendanceRecord {
     const todayStr = new Date().toISOString().split('T')[0];
     const email = String(entry.email || '').trim().toLowerCase();
     const matchedUser = email ? users.find((user) => user.email.toLowerCase() === email) : undefined;
@@ -447,7 +447,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       createdAt,
       updatedAt
     };
-  };
+  }
 
   const mergeAttendanceEntries = (existing: AttendanceRecord[], incoming: Partial<AttendanceRecord>[]) => {
     return mergeAttendanceRecords(existing, incoming.map(normalizeAttendanceRecord));
