@@ -5,19 +5,20 @@ import { UserMinus, UserCheck, ShieldAlert, FileSpreadsheet, RefreshCw, Save } f
 export const AdminDashboard: React.FC = () => {
   const { users, setUsers, toggleUserActiveStatus, resetSprintData, updates } = usePulse();
   const [isResetting, setIsResetting] = useState(false);
-  const [assignments, setAssignments] = useState<Record<string, { role: string; department: string; pod: 'India Pod' | 'UAE Pod'; reportingManager: string }>>({});
+  const [assignments, setAssignments] = useState<Record<string, { role: string; department: string; pod: 'India Pod' | 'UAE Pod'; reportingManager: string; employmentType: 'Full-time' | 'Contractor' | 'Intern' | 'Part-time' }>>({});
   const [manualEmail, setManualEmail] = useState('');
   const [manualName, setManualName] = useState('');
 
   const apiBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/\/$/, '') || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://update-tool.onrender.com');
 
   useEffect(() => {
-    const nextAssignments = users.reduce<Record<string, { role: string; department: string; pod: 'India Pod' | 'UAE Pod'; reportingManager: string }>>((acc, user) => {
+    const nextAssignments = users.reduce<Record<string, { role: string; department: string; pod: 'India Pod' | 'UAE Pod'; reportingManager: string; employmentType: 'Full-time' | 'Contractor' | 'Intern' | 'Part-time' }>>((acc, user) => {
       acc[user.id] = {
         role: user.role || 'employee',
         department: user.department || 'General',
         pod: user.pod || 'India Pod',
-        reportingManager: user.reportingManager || 'Manager'
+        reportingManager: user.reportingManager || 'Manager',
+        employmentType: user.employmentType || 'Full-time'
       };
       return acc;
     }, {});
@@ -43,6 +44,7 @@ export const AdminDashboard: React.FC = () => {
       department: draft.department || 'General',
       pod: draft.pod || 'India Pod',
       reportingManager: draft.reportingManager || 'Manager',
+      employmentType: draft.employmentType || 'Full-time',
       active: targetUser.active ?? true,
       avatarColor: targetUser.avatarColor || '#6366f1',
       password: targetUser.password || 'password'
@@ -254,6 +256,15 @@ export const AdminDashboard: React.FC = () => {
                     <label style={{ display: 'grid', gap: '6px' }}>
                       <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Reporting lead</span>
                       <input type="text" value={draft.reportingManager} onChange={(event) => setAssignments((prev) => ({ ...prev, [user.id]: { ...draft, reportingManager: event.target.value } }))} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+                    </label>
+                    <label style={{ display: 'grid', gap: '6px' }}>
+                      <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Employment type</span>
+                      <select value={draft.employmentType} onChange={(event) => setAssignments((prev) => ({ ...prev, [user.id]: { ...draft, employmentType: event.target.value as 'Full-time' | 'Contractor' | 'Intern' | 'Part-time' } }))} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
+                        <option value="Full-time">Full-time</option>
+                        <option value="Contractor">Contractor</option>
+                        <option value="Intern">Intern</option>
+                        <option value="Part-time">Part-time</option>
+                      </select>
                     </label>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>

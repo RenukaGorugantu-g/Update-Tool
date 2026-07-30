@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { SignOutButton } from '@clerk/clerk-react';
 import { usePulse } from './context/PulseContext';
 import { Sidebar } from './components/Sidebar';
@@ -22,7 +22,6 @@ import {
   AlertTriangle,
   Info,
   CheckCircle2,
-  LogOut,
   Bot
 } from 'lucide-react';
 import LandingPage from './components/LandingPage';
@@ -40,20 +39,12 @@ const getApiBase = () => {
   return 'https://update-tool.onrender.com';
 };
 
-const formatDurationLabel = (seconds: number) => {
-  const hrs = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-  return `${hrs}h ${mins}m ${secs}s`;
-};
-
 function App() {
   const {
     currentUser,
     notifications,
     setNotifications,
-    logout,
-    recordAttendanceEvent
+    logout
   } = usePulse();
   const clerkEnabled = Boolean((import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '').trim());
   const [, setShowOnboarding] = useState(false);
@@ -64,15 +55,7 @@ function App() {
   const [gmailConnectionState, setGmailConnectionState] = useState<'loading' | 'connected' | 'not-connected'>('loading');
   const [gmailFeedback, setGmailFeedback] = useState<string | null>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-  const [attendanceWidgetActive, setAttendanceWidgetActive] = useState(false);
-  const [attendanceWidgetElapsed, setAttendanceWidgetElapsed] = useState(0);
-  const [attendanceWidgetAccumulatedSeconds, setAttendanceWidgetAccumulatedSeconds] = useState(0);
-  const [attendanceWidgetStartedAt, setAttendanceWidgetStartedAt] = useState<number | null>(null);
-  const attendanceWidgetLastTickRef = useRef(Date.now());
-  const attendanceWidgetSessionFinalizedRef = useRef(false);
   const apiBase = getApiBase();
-  const attendanceWidgetStorageKey = currentUser?.id ? `pulse-attendance-widget-${currentUser.id}` : null;
-  const isEmployeeView = currentUser?.role?.toLowerCase() === 'employee';
   const canUseAssistant = Boolean(currentUser && ['admin', 'super_admin', 'employer'].includes(currentUser.role));
 
   const persistGmailConnection = (email: string, connected: boolean) => {
@@ -173,6 +156,14 @@ function App() {
     return () => window.removeEventListener('pulse:setActiveTab', navHandler as EventListener);
   }, []);
 
+  useEffect(() => {
+    const logoutHandler = () => {
+      logout();
+    };
+    window.addEventListener('pulse:logout', logoutHandler);
+    return () => window.removeEventListener('pulse:logout', logoutHandler);
+  }, [logout]);
+
   // Fallback: hide onboarding when requested by modal
   useEffect(() => {
     const hideHandler = () => {
@@ -215,154 +206,7 @@ function App() {
     }
   }, [currentUser]);
 
-  const handleAttendanceWidgetAction = async (action: 'login' | 'logout') => {
-    if (!currentUser) return;
-    const now = new Date();
-    const time = now.toTimeString().split(' ')[0];
-    const date = now.toISOString().split('T')[0];
-    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown';
-    const browser = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : 'Browser';
-    const os = /Windows/.test(ua) ? 'Windows' : /Mac/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : 'Unknown';
-    let detectedIpAddress = '';
-
-    try {
-      const response = await fetch('https://api.ipify.org?format=json', { headers: { Accept: 'application/json' } });
-      if (response.ok) {
-        const payload = await response.json().catch(() => null);
-        if (payload?.ip) {
-          detectedIpAddress = String(payload.ip).trim();
-        }
-      }
-    } catch (error) {
-      console.warn('Unable to detect public IP for attendance widget:', error);
-    }
-
-    const location: 'Office' | 'Remote' = detectedIpAddress ? 'Remote' : 'Remote';
-    if (action === 'login') {
-      attendanceWidgetSessionFinalizedRef.current = false;
-      setAttendanceWidgetActive(true);
-      setAttendanceWidgetElapsed(0);
-      setAttendanceWidgetAccumulatedSeconds(0);
-      setAttendanceWidgetStartedAt(now.getTime());
-      attendanceWidgetLastTickRef.current = now.getTime();
-    } else {
-      const completedSeconds = Math.max(1, attendanceWidgetActive ? attendanceWidgetAccumulatedSeconds + attendanceWidgetElapsed : attendanceWidgetAccumulatedSeconds);
-      attendanceWidgetSessionFinalizedRef.current = true;
-      setAttendanceWidgetActive(false);
-      setAttendanceWidgetAccumulatedSeconds(completedSeconds);
-      setAttendanceWidgetElapsed(0);
-      setAttendanceWidgetStartedAt(null);
-    }
-
-    await recordAttendanceEvent({
-      date,
-      loginTime: action === 'login' ? time : '',
-      logoutTime: action === 'logout' ? time : '',
-      workingHours: action === 'logout' ? formatDurationLabel(attendanceWidgetActive ? attendanceWidgetAccumulatedSeconds + attendanceWidgetElapsed : attendanceWidgetAccumulatedSeconds) : '0h 0m',
-      status: 'Present',
-      officeRemote: location,
-      ipAddress: detectedIpAddress || 'Unknown',
-      device: /Mobile/.test(ua) ? 'Mobile' : 'Desktop',
-      browser,
-      os
-    });
-  };
-
-
-  useEffect(() => {
-    if (!currentUser) {
-      setAttendanceWidgetActive(false);
-      setAttendanceWidgetElapsed(0);
-      setAttendanceWidgetAccumulatedSeconds(0);
-      setAttendanceWidgetStartedAt(null);
-      attendanceWidgetSessionFinalizedRef.current = false;
-      return;
-    }
-
-    if (!attendanceWidgetStorageKey) {
-      setAttendanceWidgetActive(false);
-      setAttendanceWidgetElapsed(0);
-      setAttendanceWidgetAccumulatedSeconds(0);
-      setAttendanceWidgetStartedAt(null);
-      attendanceWidgetSessionFinalizedRef.current = false;
-      return;
-    }
-
-    const saved = localStorage.getItem(attendanceWidgetStorageKey);
-    if (saved) return;
-
-    setAttendanceWidgetActive(false);
-    setAttendanceWidgetElapsed(0);
-    setAttendanceWidgetAccumulatedSeconds(0);
-    setAttendanceWidgetStartedAt(null);
-    attendanceWidgetSessionFinalizedRef.current = false;
-  }, [attendanceWidgetStorageKey, currentUser?.id]);
-
-  useEffect(() => {
-    if (!attendanceWidgetStorageKey) return;
-    try {
-      const saved = localStorage.getItem(attendanceWidgetStorageKey);
-      if (!saved) return;
-      const parsed = JSON.parse(saved);
-      const today = new Date().toISOString().split('T')[0];
-      if (parsed?.date !== today) {
-        localStorage.removeItem(attendanceWidgetStorageKey);
-        return;
-      }
-
-      setAttendanceWidgetActive(Boolean(parsed.active));
-      setAttendanceWidgetAccumulatedSeconds(Number(parsed.accumulatedSeconds || 0));
-      setAttendanceWidgetStartedAt(parsed.sessionStartedAt ? Number(parsed.sessionStartedAt) : null);
-      if (Boolean(parsed.active) && parsed.sessionStartedAt) {
-        setAttendanceWidgetElapsed(Math.max(0, Math.floor((Date.now() - Number(parsed.sessionStartedAt)) / 1000)));
-      }
-    } catch (error) {
-      console.warn('Unable to restore attendance widget state:', error);
-    }
-  }, [attendanceWidgetStorageKey]);
-
-  useEffect(() => {
-    if (!attendanceWidgetStorageKey) return;
-    const payload = {
-      date: new Date().toISOString().split('T')[0],
-      active: attendanceWidgetActive,
-      accumulatedSeconds: attendanceWidgetAccumulatedSeconds,
-      sessionStartedAt: attendanceWidgetStartedAt
-    };
-    if (attendanceWidgetActive || attendanceWidgetAccumulatedSeconds > 0) {
-      localStorage.setItem(attendanceWidgetStorageKey, JSON.stringify(payload));
-    } else {
-      localStorage.removeItem(attendanceWidgetStorageKey);
-    }
-  }, [attendanceWidgetStorageKey, attendanceWidgetActive, attendanceWidgetAccumulatedSeconds, attendanceWidgetStartedAt]);
-
-  useEffect(() => {
-    if (!attendanceWidgetActive) {
-      setAttendanceWidgetElapsed(0);
-      return;
-    }
-
-    const syncElapsed = () => {
-      if (!attendanceWidgetActive || attendanceWidgetStartedAt === null) {
-        setAttendanceWidgetElapsed(0);
-        return;
-      }
-      setAttendanceWidgetElapsed(Math.max(0, Math.floor((Date.now() - attendanceWidgetStartedAt) / 1000)));
-    };
-
-    syncElapsed();
-    const timer = window.setInterval(syncElapsed, 1000);
-
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [attendanceWidgetActive, attendanceWidgetStartedAt]);
-
-  const attendanceWidgetStatusLabel = !attendanceWidgetActive ? 'Not started' : 'Active now';
-
-  const attendanceWidgetStatusDetail = !attendanceWidgetActive
-    ? 'Clock in to start tracking your time.'
-    : 'Tracking your active time now.';
+  // No standalone widget state in App. Attendance is handled by the dedicated Attendance dashboard.
 
   const getUnreadNotificationsCount = () => {
     return notifications.filter(n => !n.read).length;
@@ -453,23 +297,6 @@ function App() {
           <ExecutiveAIChat isOpen={isAssistantOpen} onClose={() => setIsAssistantOpen(false)} />
         </>
       ) : null}
-      {currentUser && isEmployeeView && attendanceWidgetActive ? (
-        <div style={{ position: 'fixed', right: '14px', bottom: '14px', zIndex: 1600, display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '14px', background: 'rgba(2, 8, 23, 0.94)', border: '1px solid rgba(52, 211, 153, 0.3)', boxShadow: '0 16px 38px rgba(0, 0, 0, 0.28)', color: '#f8fafc' }}>
-          <div style={{ minWidth: '120px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#86efac', fontWeight: 700 }}>
-              <span style={{ width: '7px', height: '7px', borderRadius: '999px', background: '#34d399', display: 'inline-block' }} />
-              {attendanceWidgetStatusLabel}
-            </div>
-            <div style={{ marginTop: '2px', fontSize: '0.96rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{formatDurationLabel(attendanceWidgetAccumulatedSeconds + attendanceWidgetElapsed)}</div>
-            <div style={{ marginTop: '2px', fontSize: '0.68rem', color: '#cbd5e1' }}>{attendanceWidgetStatusDetail}</div>
-          </div>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <button type="button" onClick={() => void handleAttendanceWidgetAction('logout')} style={{ border: 'none', borderRadius: '8px', padding: '6px 8px', background: '#7f1d1d', color: '#fff1f2', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <LogOut size={12} /> Stop
-            </button>
-          </div>
-        </div>
-      ) : null}
       {clerkEnabled ? <ClerkSessionBridge /> : null}
       {/* Sidebar Navigation */}
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -477,7 +304,7 @@ function App() {
       {/* Main Container */}
       <main className="main-shell">
         {/* Top Header */}
-        <header className="glass-card page-header">
+        <header className="glass-card page-header" style={{ overflow: 'visible', zIndex: 1000 }}>
           {/* Left: Active Role Greeting */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Active Role:</span>

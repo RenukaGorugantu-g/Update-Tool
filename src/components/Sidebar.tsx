@@ -222,6 +222,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
             <Moon size={16} />
           </button>
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            const event = new CustomEvent('pulse:logout');
+            window.dispatchEvent(event);
+          }}
+          style={{
+            width: '100%',
+            marginTop: '12px',
+            padding: '10px 12px',
+            borderRadius: '8px',
+            border: '1px solid rgba(16, 185, 129, 0.18)',
+            background: 'rgba(16, 185, 129, 0.08)',
+            color: 'var(--accent-primary)',
+            fontSize: '0.85rem',
+            fontWeight: 700,
+            cursor: 'pointer'
+          }}
+        >
+          Log Out
+        </button>
       </div>
     </aside>
   );

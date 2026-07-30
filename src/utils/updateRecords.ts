@@ -1,4 +1,4 @@
-const normalizeListValue = (value: unknown) => {
+export const normalizeListValue = (value: unknown) => {
   if (Array.isArray(value)) {
     return value.map((entry) => String(entry ?? '').trim()).filter(Boolean);
   }

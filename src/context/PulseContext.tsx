@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { mergeUpdatesRecords } from '../utils/updateRecords.ts';
+import { mergeUpdatesRecords, normalizeListValue } from '../utils/updateRecords.ts';
 
 // --- TS Interfaces ---
 export interface User {
@@ -11,6 +11,7 @@ export interface User {
   pod: 'India Pod' | 'UAE Pod';
   reportingManager: string;
   employeeId: string;
+  employmentType: 'Full-time' | 'Contractor' | 'Intern' | 'Part-time';
   active: boolean;
   avatarColor: string;
   password?: string;
@@ -167,11 +168,11 @@ interface PulseContextType {
 
 // --- Seed Data (Admin + Executives only, No Fake Data for Employees/Updates) ---
 const initialUsers: User[] = [
-  { id: 'u-admin', name: 'Admin Root', email: 'info@maplelearningsolutions.com', role: 'admin', department: 'Management', pod: 'India Pod', reportingManager: 'Board', employeeId: 'MP-0000', active: true, avatarColor: '#dc2626', password: 'admin' },
-  { id: 'u-sandeep', name: 'Sandeep', email: 'sandeep@maplelearningsolutions.com', role: 'super_admin', department: 'Web Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0001', active: true, avatarColor: '#ec4899', password: 'executive' },
-  { id: 'u-krishna', name: 'Krishna', email: 'krishna@maplelearningsolutions.com', role: 'executive', department: 'eLearning Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0002', active: true, avatarColor: '#6366f1', password: 'executive' },
-  { id: 'u-rathish', name: 'Rathish', email: 'rathish@maplelearningsolutions.com', role: 'executive', department: 'Marketing & Sales Team', pod: 'UAE Pod', reportingManager: 'CEO', employeeId: 'MP-0003', active: true, avatarColor: '#f59e0b', password: 'executive' }
-  ,{ id: 'u-renuka', name: 'Renuka', email: 'renuka@maplelearningsolutions.com', role: 'employee', department: 'Marketing & Sales Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0004', active: true, avatarColor: '#7c3aed', password: 'executive' }
+  { id: 'u-admin', name: 'Admin Root', email: 'info@maplelearningsolutions.com', role: 'admin', department: 'Management', pod: 'India Pod', reportingManager: 'Board', employeeId: 'MP-0000', employmentType: 'Full-time', active: true, avatarColor: '#dc2626', password: 'admin' },
+  { id: 'u-sandeep', name: 'Sandeep', email: 'sandeep@maplelearningsolutions.com', role: 'super_admin', department: 'Web Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0001', employmentType: 'Full-time', active: true, avatarColor: '#ec4899', password: 'executive' },
+  { id: 'u-krishna', name: 'Krishna', email: 'krishna@maplelearningsolutions.com', role: 'executive', department: 'eLearning Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0002', employmentType: 'Full-time', active: true, avatarColor: '#6366f1', password: 'executive' },
+  { id: 'u-rathish', name: 'Rathish', email: 'rathish@maplelearningsolutions.com', role: 'executive', department: 'Marketing & Sales Team', pod: 'UAE Pod', reportingManager: 'CEO', employeeId: 'MP-0003', employmentType: 'Full-time', active: true, avatarColor: '#f59e0b', password: 'executive' },
+  { id: 'u-renuka', name: 'Renuka', email: 'renuka@maplelearningsolutions.com', role: 'employee', department: 'Marketing & Sales Team', pod: 'India Pod', reportingManager: 'CEO', employeeId: 'MP-0004', employmentType: 'Full-time', active: true, avatarColor: '#7c3aed', password: 'executive' }
 ];
 
 const initialNotifications: SystemNotification[] = [
@@ -265,6 +266,7 @@ const mergeUsersLists = (existingUsers: User[], incomingUsers: User[]) => {
         department: incomingUser.department || merged[existingIndex].department || 'General',
         pod: incomingUser.pod || merged[existingIndex].pod || 'India Pod',
         reportingManager: incomingUser.reportingManager || merged[existingIndex].reportingManager || 'Manager',
+        employmentType: incomingUser.employmentType || merged[existingIndex].employmentType || 'Full-time',
         active: incomingUser.active ?? merged[existingIndex].active ?? true,
         avatarColor: incomingUser.avatarColor || merged[existingIndex].avatarColor || '#10b981',
         password: incomingUser.password || merged[existingIndex].password || 'password'
@@ -278,18 +280,20 @@ const mergeUsersLists = (existingUsers: User[], incomingUsers: User[]) => {
   return merged;
 };
 
-const normalizeListValue = (value: unknown) => {
-  if (Array.isArray(value)) {
-    return value.map((entry) => String(entry ?? '').trim()).filter(Boolean);
-  }
-  if (typeof value === 'string') {
-    return value
-      .split(/\r?\n/)
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-  }
-  return [];
-};
+const normalizeUser = (user: any): User => ({
+  id: String(user.id || '').trim() || `emp-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+  name: String(user.name || 'Unknown').trim(),
+  email: String(user.email || '').trim().toLowerCase(),
+  role: ['admin', 'super_admin', 'executive', 'employer', 'employee'].includes(String(user.role)) ? user.role : 'employee',
+  department: String(user.department || 'General').trim(),
+  pod: String(user.pod) === 'UAE Pod' ? 'UAE Pod' : 'India Pod',
+  reportingManager: String(user.reportingManager || 'Manager').trim(),
+  employeeId: String(user.employeeId || `CL-${Math.random().toString(36).slice(2, 8).toUpperCase()}`).trim(),
+  employmentType: ['Full-time', 'Contractor', 'Intern', 'Part-time'].includes(String(user.employmentType)) ? user.employmentType : 'Full-time',
+  active: user.active !== false,
+  avatarColor: String(user.avatarColor || '#10b981').trim(),
+  password: String(user.password || 'password')
+});
 
 const mergeAttendanceRecords = (existing: AttendanceRecord[], incoming: AttendanceRecord[]) => {
   const byKey = new Map<string, AttendanceRecord>();
@@ -343,12 +347,12 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem('pulse-users');
     const parsed = saved ? JSON.parse(saved) : null;
-    if (!parsed) return initialUsers;
-    // Merge seeded initial users if missing (preserve existing local overrides)
-    const lowerEmails = parsed.map((u: any) => String(u.email || '').toLowerCase());
-    const missing = initialUsers.filter(u => !lowerEmails.includes(u.email.toLowerCase()));
-    if (missing.length === 0) return parsed;
-    const merged = [...parsed, ...missing];
+    if (!Array.isArray(parsed)) return initialUsers;
+    const normalized = parsed.map(normalizeUser);
+    const lowerEmails = normalized.map((u) => u.email.toLowerCase());
+    const missing = initialUsers.filter((u) => !lowerEmails.includes(u.email.toLowerCase()));
+    if (missing.length === 0) return normalized;
+    const merged = [...normalized, ...missing];
     try { localStorage.setItem('pulse-users', JSON.stringify(merged)); } catch {}
     return merged;
   });
