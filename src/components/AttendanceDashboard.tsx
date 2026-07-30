@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { usePulse, AttendanceRecord, User } from '../context/PulseContext';
+import { usePulse } from '../context/PulseContext';
+import type { AttendanceRecord } from '../context/PulseContext';
 import {
   CalendarDays,
   Clock3,
