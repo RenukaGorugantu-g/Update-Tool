@@ -235,8 +235,8 @@ export const AttendanceDashboard: React.FC = () => {
     const byKey = new Map<string, { value: string; label: string }>();
 
     users
-      .filter((user) => user?.role === 'employee' && user?.active !== false)
-      .forEach((user) => {
+      .filter((user: any) => user?.role === 'employee' && user?.active !== false)
+      .forEach((user: any) => {
         const key = user.id || user.email || user.name || 'unknown';
         if (!byKey.has(key)) {
           byKey.set(key, {
@@ -246,7 +246,7 @@ export const AttendanceDashboard: React.FC = () => {
         }
       });
 
-    attendance.filter((entry) => entry.userId || entry.email || entry.employeeName).forEach((entry) => {
+    attendance.filter((entry: any) => entry.userId || entry.email || entry.employeeName).forEach((entry: any) => {
       const key = entry.userId || entry.email || entry.employeeName || 'unknown';
       if (!byKey.has(key)) {
         byKey.set(key, {
@@ -279,7 +279,7 @@ export const AttendanceDashboard: React.FC = () => {
     if (!currentUser) return [] as AttendanceRecord[];
     return attendance
       .filter((entry: AttendanceRecord) => entry.userId === currentUser.id || entry.email === currentUser.email)
-      .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.loginTime || '').localeCompare(a.loginTime || ''));
+      .sort((a: AttendanceRecord, b: AttendanceRecord) => (b.date || '').localeCompare(a.date || '') || (b.loginTime || '').localeCompare(a.loginTime || ''));
   }, [attendance, currentUser]);
 
   const visibleEntries = useMemo(() => {
@@ -292,20 +292,20 @@ export const AttendanceDashboard: React.FC = () => {
         const matchesSearch = !searchTerm || haystack.includes(searchTerm.toLowerCase());
         return matchesEmployee && matchesStatus && matchesSearch;
       })
-      .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.loginTime || '').localeCompare(a.loginTime || ''));
+      .sort((a: AttendanceRecord, b: AttendanceRecord) => (b.date || '').localeCompare(a.date || '') || (b.loginTime || '').localeCompare(a.loginTime || ''));
   }, [attendance, canViewTeamAttendance, employeeEntries, isEmployee, searchTerm, selectedStatus, selectedEmployeeId]);
 
-  const presentCount = visibleEntries.filter((entry) => ['Present', 'Late', 'Half Day'].includes(entry.status)).length;
-  const absentCount = visibleEntries.filter((entry) => entry.status === 'Absent').length;
-  const officeCount = visibleEntries.filter((entry) => entry.officeRemote === 'Office').length;
-  const remoteCount = visibleEntries.filter((entry) => entry.officeRemote === 'Remote').length;
+  const presentCount = visibleEntries.filter((entry: any) => ['Present', 'Late', 'Half Day'].includes(entry.status)).length;
+  const absentCount = visibleEntries.filter((entry: any) => entry.status === 'Absent').length;
+  const officeCount = visibleEntries.filter((entry: any) => entry.officeRemote === 'Office').length;
+  const remoteCount = visibleEntries.filter((entry: any) => entry.officeRemote === 'Remote').length;
 
   const toggleAttendanceSelection = (rowKey: string) => {
     setSelectedAttendanceIds((prev) => (prev.includes(rowKey) ? prev.filter((value) => value !== rowKey) : [...prev, rowKey]));
   };
 
   const selectVisibleAttendance = () => {
-    const keys = visibleEntries.map((entry) => getAttendanceRowKey(entry)).filter(Boolean);
+    const keys = visibleEntries.map((entry: any) => getAttendanceRowKey(entry)).filter(Boolean);
     setSelectedAttendanceIds(keys);
   };
 
@@ -315,7 +315,7 @@ export const AttendanceDashboard: React.FC = () => {
 
   const employeeSummary = useMemo(() => {
     const groups: Record<string, any> = {};
-    visibleEntries.forEach((entry) => {
+    visibleEntries.forEach((entry: any) => {
       const key = entry.userId || entry.employeeName || 'unknown';
       if (!groups[key]) {
         groups[key] = {
@@ -358,8 +358,8 @@ export const AttendanceDashboard: React.FC = () => {
       const key = d.toISOString().split('T')[0];
       const label = d.toLocaleDateString(undefined, { weekday: 'short' });
       const minutes = base
-        .filter((entry) => (entry.date || entry.createdAt?.slice(0, 10)) === key)
-        .reduce((sum, entry) => sum + parseMinutes(entry.workingHours), 0);
+        .filter((entry: any) => (entry.date || entry.createdAt?.slice(0, 10)) === key)
+        .reduce((sum: number, entry: any) => sum + parseMinutes(entry.workingHours), 0);
       days.push({ key, label, minutes, isToday: key === today });
     }
     return days;

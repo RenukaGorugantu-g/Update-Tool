@@ -789,6 +789,8 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.warn('attendance sync failed', err);
     }
 
+    };
+
   function trackEvent(name: string, payload?: any) {
     try {
       const item = { id: `evt-${Date.now()}`, name, payload: payload || {}, timestamp: new Date().toISOString() };
