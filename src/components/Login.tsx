@@ -64,7 +64,7 @@ export const Login: React.FC = () => {
             </div>
             <div>
               <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--accent-primary)' }}>
-                Maple Pulse
+                MapleBot
               </p>
               <h1 style={{ margin: '10px 0 0', fontSize: '2.2rem', lineHeight: 1.05, fontWeight: 900 }}>
                 Login to your team status dashboard

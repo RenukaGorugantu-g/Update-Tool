@@ -146,7 +146,7 @@ export const AdminDashboard: React.FC = () => {
       <div style={{ marginBottom: '24px' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.02em' }}>CEO Admin Panel</h2>
         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-          Manage Maple Pulse company directory, configure pods and divisions, provision roles, and audit activation flags.
+          Manage MapleBot company directory, configure pods and divisions, provision roles, and audit activation flags.
         </p>
       </div>
 

@@ -90,7 +90,7 @@ export const ExecutiveDashboard: React.FC = () => {
   const handleListenBrief = () => {
     let text = `Good Morning ${currentUser.name}. `;
     if (totalEmployees.length === 0) {
-      text += "Currently there are no employees registered in the Maple Pulse company directory. Please use the Admin panel to create employee accounts and start submitting updates.";
+      text += "Currently there are no employees registered in the MapleBot company directory. Please use the Admin panel to create employee accounts and start submitting updates.";
     } else {
       text += `Today, ${submittedCount} out of ${totalEmployees.length} registered employees have submitted their updates. `;
       if (activeBlockers > 0) {
@@ -378,7 +378,7 @@ export const ExecutiveDashboard: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
           <h3 style={{ fontSize: '1.05rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Sparkles size={16} style={{ color: 'var(--accent-primary)' }} />
-            <span>Maple Pulse Daily Brief</span>
+              <span>MapleBot Daily Brief</span>
           </h3>
           
           <button

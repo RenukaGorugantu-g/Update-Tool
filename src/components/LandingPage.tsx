@@ -88,7 +88,7 @@
 //       </section>
 
 //       <section className="how-it-works">
-//         <h3>How Maple Pulse Works</h3>
+//         <h3>How MapleBot Works</h3>
 //         <p className="lead">A seamless workflow designed for clarity and speed. From the individual contributor to the CEO.</p>
 //         <div className="how-grid">
 //           <div className="how-card">
@@ -173,7 +173,7 @@
 //       </section>
 
 //       <section className="lifecycle">
-//         <h3>The Maple Pulse Lifecycle</h3>
+//         <h3>The MapleBot Lifecycle</h3>
 //         <div className="lifecycle-strip">
 //           <div className="step">Employee</div>
 //           <div className="step">Manager</div>
@@ -205,7 +205,7 @@ const LandingPage: React.FC = () => {
           <img
             className="navbar-logo"
             src="https://framerusercontent.com/images/sOF8vdyAVOEvCEsxVJEhhV6lY.png?scale-down-to=512&width=2070&height=922"
-            alt="Maple Pulse logo"
+            alt="MapleBot logo"
           />
           <button className="btn btn-primary navbar-signup" onClick={() => goto('/login')}>
             Sign up

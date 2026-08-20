@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Starting Maple Pulse Backend Server..."
+echo "🚀 Starting MapleBot Backend Server..."
 echo "📦 Ensuring dependencies are installed..."
 
 # Make sure node_modules exists and dependencies are installed

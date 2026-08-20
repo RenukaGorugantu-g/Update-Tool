@@ -46,7 +46,7 @@ const createChatPayload = ({ update, user }) => {
     '',
     'Please review this update and follow up if any support is needed.',
     '',
-    '🚀 Maple Pulse built-in live report'
+    '🚀 MapleBot built-in live report'
   ];
 
   return {

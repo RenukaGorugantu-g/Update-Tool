@@ -180,27 +180,27 @@ const initialNotifications: SystemNotification[] = [
 ];
 
 const initialChatMessages: ChatMessage[] = [
-  { id: 'm-1', sender: 'ai', text: 'Welcome back. I am your Maple Pulse Assistant. Ask me anything about the team updates or blockers. Currently, we are awaiting employee directory updates.', timestamp: new Date().toISOString() }
+  { id: 'm-1', sender: 'ai', text: 'Welcome back. I am your MapleBot Assistant. Ask me anything about the team updates or blockers. Currently, we are awaiting employee directory updates.', timestamp: new Date().toISOString() }
 ];
 
 const initialEmails: MockEmail[] = [
   {
     id: 'email-welcome',
-    senderName: 'Maple Pulse Onboarding',
+    senderName: 'MapleBot Onboarding',
     senderEmail: 'onboarding@maplelearningsolutions.com',
     recipientEmail: 'info@maplelearningsolutions.com',
-    subject: 'Welcome to Maple Pulse!',
-    body: 'Hi Admin,\n\nWelcome to your Maple Pulse company portal. You can now onboard employees, track updates, and monitor operational performance from one central hub.\n\nBest,\nMaple Operations Team',
+    subject: 'Welcome to MapleBot!',
+    body: 'Hi Admin,\n\nWelcome to your MapleBot company portal. You can now onboard employees, track updates, and monitor operational performance from one central hub.\n\nBest,\nMaple Operations Team',
     timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
     read: false
   },
   {
     id: 'email-welcome-sandeep',
-    senderName: 'Maple Pulse Onboarding',
+    senderName: 'MapleBot Onboarding',
     senderEmail: 'onboarding@maplelearningsolutions.com',
     recipientEmail: 'sandeep@maplelearningsolutions.com',
     subject: 'Executive Dashboard Configured',
-    body: 'Hi Sandeep,\n\nYour Executive board dashboard has been successfully configured. You will receive notifications here whenever employees under your management log blocker flags.\n\nThanks,\nMaple Pulse Support',
+    body: 'Hi Sandeep,\n\nYour Executive board dashboard has been successfully configured. You will receive notifications here whenever employees under your management log blocker flags.\n\nThanks,\nMapleBot Support',
     timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     read: true
   }
@@ -213,7 +213,7 @@ const initialMockChatMessages: MockChatMessage[] = [
     senderName: 'Sandeep M',
     senderId: 'u-sandeep',
     avatarColor: '#ec4899',
-    text: 'Welcome development team to your Maple Pulse space! Let us keep our updates logged here.',
+    text: 'Welcome development team to your MapleBot space! Let us keep our updates logged here.',
     timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString()
   },
   {
@@ -955,7 +955,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const summaryText = [
-      `*Maple Pulse Daily Update — ${record.projectName}*`,
+      `*MapleBot Daily Update — ${record.projectName}*`,
       `*Employee:* ${currentUser.name}`,
       `*Department:* ${currentUser.department}`,
       `*Priority:* ${record.priority}`,
@@ -989,13 +989,13 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (hasBlockers) {
         const blockerSubject = `Blocker Alert Logged: ${record.projectName}`;
-        const blockerBody = `Hi ${currentUser.name},\n\nYour blocker has been logged for the project ${record.projectName}:\n"${record.blockers[0]}"\n\nYour manager will be notified and the team space has been updated in Google Chat.\n\nBest,\nMaple Pulse`;
+        const blockerBody = `Hi ${currentUser.name},\n\nYour blocker has been logged for the project ${record.projectName}:\n"${record.blockers[0]}"\n\nYour manager will be notified and the team space has been updated in Google Chat.\n\nBest,\nMapleBot`;
 
         void sendLiveGmail(currentUser.email, blockerSubject, blockerBody);
 
         const newEmailRecord: MockEmail = {
           id: `email-${Date.now()}`,
-          senderName: 'Maple Pulse Notifications',
+          senderName: 'MapleBot Notifications',
           senderEmail: 'notifications@maplelearningsolutions.com',
           recipientEmail: currentUser.email,
           subject: blockerSubject,
@@ -1009,7 +1009,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const newChatRecord: MockChatMessage = {
         id: `chat-${Date.now()}`,
         spaceId: getChatSpaceId(currentUser.department),
-        senderName: 'Maple Pulse Bot',
+        senderName: 'MapleBot',
         senderId: 'system-bot',
         avatarColor: '#8b5cf6',
         text: summaryText,
@@ -1086,8 +1086,8 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Gmail mock request
     if (sentVia.gmail && employee) {
-      const emailSubject = `Manager Feedback Comment - Maple Pulse`;
-      const emailBody = `Hi ${employee.name},\n\nExecutive Board Member ${currentUser.name} left a feedback comment on your task update:\n"${content}"\n\nPlease address this comment.\n\nBest,\nMaple Pulse Internal Platform`;
+      const emailSubject = `Manager Feedback Comment - MapleBot`;
+      const emailBody = `Hi ${employee.name},\n\nExecutive Board Member ${currentUser.name} left a feedback comment on your task update:\n"${content}"\n\nPlease address this comment.\n\nBest,\nMapleBot Internal Platform`;
       void sendLiveGmail(employee.email, emailSubject, emailBody);
 
       // Add to Gmail simulator inbox
@@ -1400,7 +1400,7 @@ export const PulseProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return `No updates have been submitted by employees ${requestedDateLabel === 'today' ? 'today' : 'yesterday'}. Summary will generate once status submissions roll in.`;
       }
       const blockersCount = scopeUpdates.filter(u => u.blockers.length > 0 && u.blockers[0].toLowerCase() !== 'none' && u.blockers[0].trim() !== '').length;
-      return `### Maple Pulse Operations Summary (${requestedDateLabel})\n\n` +
+      return `### MapleBot Operations Summary (${requestedDateLabel})\n\n` +
         `- **Submission Compliance**: ${scopeUpdates.length} of ${activeEmployees.length} employees submitted updates.\n` +
         `- **Blockers Flagged**: ${blockersCount} active blocker flag(s) requiring attention.\n` +
         `- **Projects Represented**: ${Array.from(new Set(scopeUpdates.map(u => u.projectName))).join(', ')}.\n\n` +

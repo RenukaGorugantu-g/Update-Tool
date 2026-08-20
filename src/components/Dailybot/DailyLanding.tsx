@@ -12,7 +12,7 @@ export const DailyLanding: React.FC = () => {
   return (
     <div className="daily-root">
       <div className="daily-left">
-        <h1 className="daily-title">Maple Pulse — Daily</h1>
+        <h1 className="daily-title">MapleBot — Daily</h1>
         <p className="daily-sub">Quick standups, asynchronous status updates, and team alignment.</p>
         <DailyLogin />
         <DailyTemplates onSelectTemplate={(id) => setSelectedTemplate(id)} />
